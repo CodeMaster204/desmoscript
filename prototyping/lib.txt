@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Generated Desmos Graph</title>
+  <script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=3811e14e71e14f2b83d5fea5e2e13075"></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    #calculator { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="calculator"></div>
+
+  <script>
+    var elt = document.getElementById('calculator');
+    var calculator = Desmos.GraphingCalculator(elt);
+
+      const graphdata = {
+          version : 11,
+          graph : {
+              viewport: {xmin :-10, xmax:10, ymin:-10, ymax:10}
+          },
+          expressions : {
+              list: [
+                  {type:"expression", id: "1", latex:"4x^2"}
+              ]
+          }
+      };
+      calculator.setState(graphdata);
+  </script>
+</body>
+</html>
+
