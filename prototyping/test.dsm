@@ -1,4 +1,23 @@
-f(x) = 45*e^(23*x)
-g(x) = 2*f(x)
-a = 2/3
-f(x) + g(2*x)
+#config{
+#    xrange;:
+#    yrange;:10,100
+#} -
+raw{
+    p0 = 0,0;
+    p1 = 0,1;
+    p2 = 1,0;
+    polygon(p0,p1,p2);
+    p3 = 0,0,0;
+    0,0 = 1,2;
+    waitasecond =2;
+    a $(2,3,4) = 2;
+# this the basic configuration model for things:
+   b $(2,4,1) = 0 ;
+    c = 0 $(2,4,1);
+    phi = 4 $(4,,2)
+#    p $(b,0.5,2.5) = 
+# We need to parse
+#   result = 2 if clause else 3 # And clauses too
+#   list = [1,2,23,4,5] # or [(0,0),(1,1)]
+};
+

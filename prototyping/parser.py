@@ -44,7 +44,15 @@ class Expr():
                 return f"({self.left} {self.token})"
         return f"{self.token}"
 
-    def latex(self):
+    def latex(self, previous=lx.TOKEN_INVALID_ID):
+        """Generates the latex expression for something, by calling recursively
+
+        Args:
+            previous (lx.token_id): the token id of the previous caller. Put lx.TOKEN_INVALID_ID if you don't care (say, are calling this one from nowhere)
+
+        Returns:
+            the latex expression
+        """
         match self.token.id:
             case lx.TOKEN_INVALID_ID:
                 raise Exception("Cannot generate latex for an invalid token")
@@ -62,6 +70,8 @@ class Expr():
                     return "-"+self.right.latex()
 
             case lx.TOKEN_MULT_ID:
+                if self.left.token.id == lx.TOKEN_NUM_ID and self.right.token.id == lx.TOKEN_VARIABLE_ID:
+                    return self.left.latex() + self.right.latex() 
                 return self.left.latex() + "\\cdot " + self.right.latex()
 
             case lx.TOKEN_DIV_ID:
@@ -72,10 +82,22 @@ class Expr():
 
             case lx.TOKEN_LPAREN_ID:
                 if self.op_type == EXPR_BIN: # Used as an evaluation operator
-                    return self.left.latex() + "\\left(" + self.right.latex() + "\\right)"
+                    return self.left.latex(lx.TOKEN_LPAREN_ID) + "\\left(" + self.right.latex(lx.TOKEN_LPAREN_ID) + "\\right)"
                 if self.op_type == EXPR_PRE:
-                    return "\\right("+self.right.latex() + "\\right)"
+                    return "\\right("+self.right.latex(lx.TOKEN_LPAREN_ID) + "\\right)"
                 raise Exception("A left parenthesis needs to either be a binary of prefix operator")
+            
+            case lx.TOKEN_COMMA_ID: # This is very easy, but the main problem is the parentheses that circle around something
+                if previous != lx.TOKEN_COMMA_ID and previous != lx.TOKEN_LPAREN_ID: 
+                                                        # That is, we are the first comma called (hierarichally) E.g.:
+                                                        # Input:            1,2,3,4
+                                                        # Parse:            (1,(2,(3,4)))
+                                                        #                     ^
+                                                        # The ^ is the one we are, if this if passes. In this case, we need to add parentheses, but 
+                                                        # only if the above isn't a parenthesis either...
+                    return "(" + self.left.latex(lx.TOKEN_COMMA_ID) + "," + self.right.latex(lx.TOKEN_COMMA_ID) + ")"
+
+                return self.left.latex(lx.TOKEN_COMMA_ID) + "," + self.right.latex(lx.TOKEN_COMMA_ID)
 
             case lx.TOKEN_LCUR_ID:
                 raise Exception("A left curly bracket shouldn't appear in latex")
@@ -99,24 +121,24 @@ class Expr():
                 return self.left.latex() + "=" +self.right.latex()
 
                 # --- Desmos keywords
-            case lx.TOKEN_COS_ID:
+            case lx.TOKEN_COS_ID | lx.TOKEN_POLYGON_ID:
                 return self.token.latex()
 
                 # --- Desmoscript keywords
             case lx.TOKEN_RAW_ID:
                 return self.token.latex()
 
+            case lx.TOKEN_DOLLAR_ID:
+                return "$" +self.right.latex()
+
             case _:
                 raise Exception(f"Attempted latexification on unknown id: {self.token.id}")
 
 
 class ExprList:
-    def __init__(self, token: lx.Token, op_type):
+    def __init__(self, token: lx.Token):
         self.token = token
         self.data: List[Expr] = []
-        self.op_type = op_type
-        self.left = None
-        self.right = None
 
 
 
@@ -134,6 +156,10 @@ def nud_dsm_func(token: lx.Token, token_list):
         case lx.TOKEN_COS_ID:
             # Those are functions of some arguments, and act as function calls, meaning the led_lparen will handle everything for us
             return Expr(token)
+        case lx.TOKEN_POLYGON_ID:
+            # Those are functions of some arguments, and act as function calls, meaning the led_lparen will handle everything for us
+            return Expr(token)
+    return Expr(lx.TOKEN_INVALID_ID)
 
 def nud_dsmsp_kw(token, token_list):
     """Function for desmoscript default keywords, like raw
@@ -141,9 +167,10 @@ def nud_dsmsp_kw(token, token_list):
     match token.id:
         case lx.TOKEN_RAW_ID:
             # Those are "environment delimiters", meaning that after them should come a pair of {} in which a special environment will be defined. These keywords act as prefix operators
-            to_return = ExprList(token, EXPR_PRE)
-            to_return.right = parse_lines(token_list, 0)
-    return Expr(token)
+            return [Expr(token), parse_line(token_list, 0)]
+
+
+    return Expr(lx.TOKEN_INVALID_ID)
 
 def nud_plus(token, token_list):
     return Expr(token)
@@ -159,10 +186,19 @@ def nud_lparen(token, token_list): # We don't need a nud for rparen. This functi
     # TODO: Check that pairs of parentheses get detected, and reported
     return parse_line(token_list, rbp_table[token.id]) 
 
-def nud_lcur(token, token_list): # This one works as nud_lparen does, except it causes another full multiline-parse, instead
-    # of a simple "rest of expression" parse like the ( does
-    # TODO: Check that pairs of parentheses get detected, and reported
-    return parse_lines(token_list, rbp_table[token.id]) 
+def nud_lcur(token, token_list: lx.TokenList): 
+    block: list[Expr] = []
+
+    block = parse(token_list, lx.TOKEN_RCUR_ID)
+    if(token_list.peek().id != lx.TOKEN_RCUR_ID):
+        raise Exception("Right curly wasn't matched")
+    token_list.advance()
+    return block
+
+def nud_dollar(token, token_list):
+    to_return = Expr(token, EXPR_PRE)
+    to_return.right = parse_line(token_list, rbp_table[token.id])
+    return to_return
 
 nud_lbra = nud_lparen # Same mechanics as for the left parenthesis
 
@@ -181,13 +217,12 @@ def led_equal(left, token, token_list): # TODO: Check whether = is used correctl
     to_return.left = left
     to_return.right = parse_line(token_list, rbp_table[token.id])
     return to_return
-
+led_comma = led_equal
 
 def led_rparen(left, token, token_list):
     # The right parenthesis should return whatever the expression was before, that is, the left, and get itself out of the way
     return left
 
-led_rcur = led_rparen # Same mechanics as the right parenthesis
 led_rbra = led_rparen 
 
 def led_none(left, token, token_list):
@@ -198,23 +233,27 @@ lbp_table = {
              lx.TOKEN_INVALID_ID: None,
              lx.TOKEN_NUM_ID: None,
              lx.TOKEN_VARIABLE_ID: None,
+             lx.TOKEN_DOLLAR_ID: None, # the dollar sign acts as a prefix operator
              lx.TOKEN_PLUS_ID: 20,
              lx.TOKEN_MINUS_ID: 20,
              lx.TOKEN_MULT_ID: 30,
              lx.TOKEN_DIV_ID: 30,
              lx.TOKEN_EXP_ID: 41,
              lx.TOKEN_EQUAL_ID: 10,
-             lx.TOKEN_END_ID: 4,
+             lx.TOKEN_END_ID: 0,
              lx.TOKEN_EOF_ID: 0,
              lx.TOKEN_LPAREN_ID: 100,
              lx.TOKEN_RPAREN_ID: 5, # We want to return as soon as we see this
-             lx.TOKEN_LCUR_ID: 100,
-             lx.TOKEN_RCUR_ID: -10,
-             lx.TOKEN_LBRA_ID: 100,
-             lx.TOKEN_RBRA_ID: 2,
+             lx.TOKEN_LCUR_ID: None,
+             lx.TOKEN_RCUR_ID: 0,
+             lx.TOKEN_LBRA_ID: None,
+             lx.TOKEN_RBRA_ID: None,
+             lx.TOKEN_COMMA_ID: 15, # Higher than =, but lower than +
+             lx.TOKEN_DOT_ID: None, #as of now
 
              # --- Desmos keywords
              lx.TOKEN_COS_ID: None,
+             lx.TOKEN_POLYGON_ID: None,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: None,
@@ -224,23 +263,27 @@ rbp_table = {
              lx.TOKEN_INVALID_ID: None,
              lx.TOKEN_NUM_ID: None,
              lx.TOKEN_VARIABLE_ID: None,
+             lx.TOKEN_DOLLAR_ID: 0, # We want everything except for an end/eof to kill it
              lx.TOKEN_PLUS_ID: 21,
              lx.TOKEN_MINUS_ID: 21,
              lx.TOKEN_MULT_ID: 31,
              lx.TOKEN_DIV_ID: 31,
              lx.TOKEN_EXP_ID: 40,
              lx.TOKEN_EQUAL_ID: 11,
-             lx.TOKEN_END_ID: 4,
+             lx.TOKEN_END_ID: 0,
              lx.TOKEN_EOF_ID: 0,
-             lx.TOKEN_LPAREN_ID: 7, # Just enough to sniff out a right parenthesis
+             lx.TOKEN_LPAREN_ID: 6, # We want this to sniff out a right parenthesis, but not a newline
              lx.TOKEN_RPAREN_ID: None,
-             lx.TOKEN_LCUR_ID: -10,
+             lx.TOKEN_LCUR_ID: None,
              lx.TOKEN_RCUR_ID: None,
-             lx.TOKEN_LBRA_ID: 3, # Just enough to sniff out a right bracket
+             lx.TOKEN_LBRA_ID: None, 
              lx.TOKEN_RBRA_ID: None,
+             lx.TOKEN_COMMA_ID: 16,
+             lx.TOKEN_DOT_ID: None, #  as of now
 
              # --- Desmos keywords
              lx.TOKEN_COS_ID: None,
+             lx.TOKEN_POLYGON_ID: None,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: None,
@@ -250,6 +293,7 @@ nud_table = {
              lx.TOKEN_INVALID_ID: nud_none,
              lx.TOKEN_NUM_ID: nud_num,
              lx.TOKEN_VARIABLE_ID: nud_var,
+             lx.TOKEN_DOLLAR_ID: nud_dollar,
              lx.TOKEN_PLUS_ID: nud_plus,
              lx.TOKEN_MINUS_ID: nud_minus,
              lx.TOKEN_MULT_ID: nud_none,
@@ -264,9 +308,12 @@ nud_table = {
              lx.TOKEN_RCUR_ID: nud_none,
              lx.TOKEN_LBRA_ID: nud_lbra,
              lx.TOKEN_RBRA_ID: nud_none,
+             lx.TOKEN_COMMA_ID: nud_none,
+             lx.TOKEN_DOT_ID: nud_none,
 
              # --- Desmos keywords
              lx.TOKEN_COS_ID: nud_dsm_func,
+             lx.TOKEN_POLYGON_ID: nud_dsm_func,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: nud_dsmsp_kw,
@@ -276,6 +323,7 @@ led_table = {
              lx.TOKEN_INVALID_ID: led_none,
              lx.TOKEN_NUM_ID: led_none,
              lx.TOKEN_VARIABLE_ID: led_none,
+             lx.TOKEN_DOLLAR_ID: led_none,
              lx.TOKEN_PLUS_ID: led_bin_op,
              lx.TOKEN_MINUS_ID: led_bin_op,
              lx.TOKEN_MULT_ID: led_bin_op,
@@ -287,12 +335,15 @@ led_table = {
              lx.TOKEN_LPAREN_ID: led_bin_op, #led_lparen,
              lx.TOKEN_RPAREN_ID: led_rparen,
              lx.TOKEN_LCUR_ID: led_bin_op,
-             lx.TOKEN_RCUR_ID: led_rcur,
+             lx.TOKEN_RCUR_ID: led_none,
              lx.TOKEN_LBRA_ID: led_bin_op,
              lx.TOKEN_RBRA_ID: led_rbra,
+             lx.TOKEN_COMMA_ID: led_comma,
+             lx.TOKEN_DOT_ID: led_none,
 
              # --- Desmos keywords
              lx.TOKEN_COS_ID: led_none,
+             lx.TOKEN_POLYGON_ID: led_none,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: led_none,
@@ -304,10 +355,6 @@ def parse_line(token_list: lx.TokenList, min_bp) -> Expr:
 
     if token == lx.TOKEN_INVALID:
         raise Exception("Token was invalid, in nud parsing")
-    if token.id == lx.TOKEN_END_ID:
-        raise Exception("There was a newline token in the nud part of parse_line")
-    if token.id == lx.TOKEN_EOF_ID:
-        raise Exception("There was an eof token in the nud part of parse_line")
 
     left = nud_table[token.id](token, token_list)
     while lbp_table[token_list.peek().id] > min_bp:
@@ -316,69 +363,37 @@ def parse_line(token_list: lx.TokenList, min_bp) -> Expr:
 
         if token == lx.TOKEN_INVALID:
             raise Exception("Token was invalid, in led parsing")
-        if token == lx.TOKEN_END_ID:
-            raise Exception("There was a newline token in the parse_line function's loop. Min_bp should be 4 or greater, if not this may happen.")
-        if token == lx.TOKEN_EOF_ID:
-            raise Exception("There was an eof token in the parse_line function's loop. Min_bp should be 0 or greater, if not this may happen.")
 
         left = led_table[token.id](left, token, token_list)
 
-    print(token_list.peek())
-    match token_list.peek().id:
-        case lx.TOKEN_RPAREN_ID:
-            token_list.advance()
     return left
 
-def parse_lines(token_list: lx.TokenList, min_bp):
-    result: List[Expr] = []
+def parse(token_list: lx.TokenList, custom_end_token_id = lx.TOKEN_EOF_ID) -> list[Expr]:
+    result: list[Expr] = []
 
-    while not token_list.isFull():
-        peekaboo = token_list.peek()
-        match peekaboo.id:
-            case lx.TOKEN_END_ID | lx.TOKEN_EOF_ID:
-                token_list.advance()
-                continue
-        if not lbp_table[peekaboo.id] is None:
-            print(peekaboo, min_bp, lbp_table[peekaboo.id])
-            if lbp_table[peekaboo.id] <= min_bp:
-                break
-        parse_result = parse_line(token_list, lbp_table[lx.TOKEN_END_ID]) # This will parse by line
-        print("parse_result", parse_result)
-        result.append(parse_result)
-        # peekaboo = token_list.peek()
-        # if not lbp_table[peekaboo.id] is None:
-        #     if lbp_table[peekaboo.id] <= min_bp:
-        #         print("trying!!")
-        #         print(parse_line(token_list, 0))
-        #         break
-    return result
+    while token_list.peek().id == lx.TOKEN_END_ID:
+        token_list.advance() # We skip the newlines at the start (do block in C)
 
-def parse(token_list: lx.TokenList) -> List[Expr]:
-    result: List[Expr] = []
+    while token_list.peek().id not in {custom_end_token_id, lx.TOKEN_EOF_ID}:
 
-    while not token_list.isFull():
-        peekaboo = token_list.peek()
-        match peekaboo.id:
-            case lx.TOKEN_END_ID:
-                token_list.advance()
-                continue
-            case lx.TOKEN_RCUR_ID:
-                token_list.advance()
-                continue
-            case lx.TOKEN_EOF_ID:
-                break
+
         parse_result = parse_line(token_list, 4) 
-        print("AA", parse_result)
+        print("intermediary parse result: ", parse_result)
 
         if not(parse_result is None):
             result.append(parse_result)
+
+        while token_list.peek().id == lx.TOKEN_END_ID:
+            token_list.advance() # We skip the newlines
+
     return result
 
-def print_parse(expr_list: List[Expr]):
+def print_parse(expr_list: list[Expr]):
+    print("Printing parse result: ")
     for expr in expr_list:
         print(f"{expr}")
 
-def latexify_parse(expr_list: List[Expr]):
+def latexify_parse(expr_list: list[Expr]):
     result = ""
     for i in range(len(expr_list)):
         result += expr_list[i].latex()
@@ -390,14 +405,17 @@ if __name__ == "__main__":
     # toparse = "-a* b ^ c * (d + b) + f(a*b) \n a+ 2 * 4 \n a=3+5"
     # toparse = "a + b* c+d^e"
     # toparse = "-a ^ b"
-    # toparse = "a^(b+c)+d"
+    # toparse = "a^(b+c)+d/cos(2*a)\n\n a+b"
     toparse = """
-    {{2+3=5}
+    raw {{2+3=5}
     cos(2*3) + cosh = 6^x
     4*x + ((56*g)/4)
     }
     a + b = 3
+    raw cos(3*a) = 0
+    raw { wait (2)=0}
     """
+    # toparse = "{2+2}"
     # toparse = "2+((56*g)/4)"
     
     token_list = lx.tokenize_str(toparse)
@@ -408,8 +426,11 @@ if __name__ == "__main__":
     # parsed = parse_lines(token_list, -20)
     # print_parse(parsed)
 
+    # parsed = parse(token_list)
+    # print(parsed)
+    # print_parse(parsed)
     parsed = parse(token_list)
-    print(parsed)
+    print("Result: ", parsed)
     print_parse(parsed)
     
     # parsed = parse(token_list)

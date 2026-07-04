@@ -33,7 +33,7 @@ class Token:
             if len(datastr) == 1:
                 return datastr
             return datastr[0] + "_{" + datastr[1:] +"}" # We subscript the rest of it
-        elif self.id == TOKEN_COS_ID:
+        elif self.id in [TOKEN_COS_ID, TOKEN_POLYGON_ID]:
             return id_to_str[self.id]
         else:
             raise Exception(f"The Token.latex() function is only defined on numbers and variables and keyword functions, not on {self}")
@@ -84,9 +84,14 @@ TOKEN_RCUR_ID = 12
 TOKEN_LBRA_ID = 13
 TOKEN_RBRA_ID = 14
 TOKEN_EOF_ID = 15
+TOKEN_COMMA_ID = 16
+TOKEN_DOT_ID = 17
+TOKEN_DOLLAR_ID = 18
 
 # --- Desmos keywords
 TOKEN_COS_ID = 50 # Leaving some space
+
+TOKEN_POLYGON_ID = 75 # Leaving some space
 
 # Desmoscript keywords
 TOKEN_RAW_ID = 100
@@ -113,9 +118,13 @@ id_to_str = {TOKEN_INVALID_ID: "invalid",
              TOKEN_RCUR_ID: "}",
              TOKEN_LBRA_ID: "[",
              TOKEN_RBRA_ID: "]",
+             TOKEN_COMMA_ID: "<,>",
+             TOKEN_DOT_ID: "<.>",
+             TOKEN_DOLLAR_ID: "$",
 
              # --- Desmos keywords
              TOKEN_COS_ID: "\\cos",
+             TOKEN_POLYGON_ID: "\\operatorname{polygon}",
 
              # --- Desmoscript keywords
              TOKEN_RAW_ID: "<raw>",
@@ -135,11 +144,15 @@ TOKEN_LCUR = Token(TOKEN_LCUR_ID)
 TOKEN_RCUR = Token(TOKEN_RCUR_ID)
 TOKEN_LBRA = Token(TOKEN_LBRA_ID)
 TOKEN_RBRA = Token(TOKEN_RBRA_ID)
+TOKEN_COMMA = Token(TOKEN_COMMA_ID)
+TOKEN_DOT = Token(TOKEN_DOT_ID)
+TOKEN_DOLLAR = Token(TOKEN_DOLLAR_ID)
 TOKEN_EOF = Token(TOKEN_EOF_ID)
 
 
 # --- Desmos keywords
 TOKEN_COS = Token(TOKEN_COS_ID)
+TOKEN_POLYGON = Token(TOKEN_POLYGON_ID)
 
 # --- Desmoscript keywords
 TOKEN_RAW = Token(TOKEN_RAW_ID)
@@ -147,29 +160,59 @@ TOKEN_RAW = Token(TOKEN_RAW_ID)
 variables = {}
 keywords = {
         "cos": TOKEN_COS,
+        "polygon": TOKEN_POLYGON,
         "raw": TOKEN_RAW
         }
 
 def make_token_from_string(num_or_var:str):
-    token = Token(TOKEN_INVALID_ID)
+    
+    """This is meant to parse stuff like 234xyz45 and spit out [234, xyz_{45}], and raise an error if the format is wrong. LATER, we will also parse 56hi_th3re into 56*hi_{th3re} and similar stuff
+    """
+    if not num_or_var.isalnum():
+        print(f"Invalid token generated, tried interpreting <{num_or_var}>")
+        return [TOKEN_INVALID]
 
-    if num_or_var[0].isalpha():
-        if num_or_var in keywords:
-            token = keywords[num_or_var]
-        elif num_or_var in variables:
-            token.id = TOKEN_VARIABLE_ID
-            token = variables[num_or_var]
+    number = num_or_var[0].isdigit() # Whether we have a number in front of the word
+    word = 0 # whether we have a word
+    subscript = 0 # Whether we have a subscript
+    first_letter = 0
+    while first_letter < len(num_or_var):
+        if(num_or_var[first_letter].isalpha()):
+            word = 1
+            break
+        first_letter += 1
+
+    first_subscript_char = first_letter+1
+    # if word:
+    #     while first_subscript_char < len(num_or_var):
+    #         if(num_or_var[first_subscript_char].isdigit()):
+    #             subscript = 1
+    #             break;
+    #         first_subscript_char += 1
+    #
+    # if subscript:
+    #     compound_word = num_or_var[first_letter: first_subscript_char] +num_or_var[first_subscript_char:]
+    # else:
+    compound_word = num_or_var[first_letter:]
+
+    if word:
+        if compound_word in keywords:
+            word_token = keywords[compound_word]
+        elif compound_word in variables:
+            word_token = variables[compound_word]
         else:
-            token.id = TOKEN_VARIABLE_ID
-            token.data = num_or_var
-            variables[num_or_var] = token
-    elif num_or_var.isdigit():
-        token.id = TOKEN_NUM_ID
-        token.data = eval(num_or_var)
+            word_token = Token(TOKEN_VARIABLE_ID, data=compound_word)
+            variables[compound_word] = word_token
 
-    if token.id == TOKEN_INVALID_ID:
-        print(f"Warning: invalid token generated: {num_or_var}")
-    return token
+        if number:
+            number_token = Token(TOKEN_NUM_ID, data = eval(num_or_var[:first_letter]))
+            return [number_token, TOKEN_MULT, word_token]
+        return [word_token]
+
+    if number:
+        number_token = Token(TOKEN_NUM_ID, data = eval(num_or_var[:first_letter]))
+        return [number_token]
+
 
 
 def tokenize_str(content) -> TokenList:
@@ -177,61 +220,121 @@ def tokenize_str(content) -> TokenList:
     start_index = 0 # Start index for the current word that's being read
     # current_index = 0 # Start index for the current word that's being read
     comment = 0 # Whether we're reading comments
+    depth = 0 # The current depth (parentheses for now, later {} and [] will be added)
+    dollar_depth = 0 # The depth at which we saw the dollar sign
+    dollar_mode = 0 # This is set to 0 when seeing a $, set to 2 when seeing a (, set to 3 when meeting the matching ), and reset to 0 after the following end of line/file token
+    dollar_buffer = TokenList() # The buffer inside which resides dollar info
+    appending_buffer = result # The buffer we are apppending now
     content = content + '\n' # We add a newline character to get an end token no matter what
     for current_index in range(len(content)):
         char = content[current_index]
-        if char in " ()+-*^/=\n{}[]" and not comment: 
+        if char in " $()+-*^/=\n{}[];#,." and not comment: 
             if current_index > start_index:
                 token = make_token_from_string(content[start_index: current_index])
-                result.append(token)
+                appending_buffer.list += token
+                appending_buffer.count+=len(token)
                 start_index = current_index+1
 
             match char:
                 case " ":
                     start_index = current_index + 1
+                    continue
                 case "(":
-                    result.append(TOKEN_LPAREN)
+                    if dollar_mode == 1: # We had a $ previously, so we change the mode, and the appending buffer
+                        dollar_mode = 2
+                        appending_buffer = dollar_buffer
+                        appending_buffer.append(TOKEN_DOLLAR) # We want the buffer to look like $arg1,arg2,arg4; (in tokens) afterwards
+                    else:
+                        appending_buffer.append(TOKEN_LPAREN)
                     start_index = current_index + 1
+                    depth+=1
+                    continue
                 case ")":
-                    result.append(TOKEN_RPAREN)
                     start_index = current_index + 1
+                    depth-=1
+                    if dollar_mode == 2 and dollar_depth == depth: # We are getting out of the $ environment, so we need to
+                        dollar_mode = 3 # signal that we went outside of it
+                        appending_buffer.append(TOKEN_END) # Append an end of line
+                        appending_buffer = result # Change the appending buffer once again
+                    else:
+                        appending_buffer.append(TOKEN_RPAREN)
+                    continue
                 case "{":
-                    result.append(TOKEN_LCUR)
+                    appending_buffer.append(TOKEN_LCUR)
                     start_index = current_index + 1
+                    continue
                 case "}":
-                    result.append(TOKEN_RCUR)
+                    appending_buffer.append(TOKEN_RCUR)
                     start_index = current_index + 1
+                    continue
                 case "[":
-                    result.append(TOKEN_LBRA)
+                    appending_buffer.append(TOKEN_LBRA)
                     start_index = current_index + 1
+                    continue
                 case "]":
-                    result.append(TOKEN_RBRA)
+                    appending_buffer.append(TOKEN_RBRA)
                     start_index = current_index + 1
+                    continue
                 case "+":
-                    result.append(TOKEN_PLUS)
+                    appending_buffer.append(TOKEN_PLUS)
                     start_index = current_index + 1
+                    continue
                 case "-":
-                    result.append(TOKEN_MINUS)
+                    appending_buffer.append(TOKEN_MINUS)
                     start_index = current_index + 1
+                    continue
                 case "*":
-                    result.append(TOKEN_MULT)
+                    appending_buffer.append(TOKEN_MULT)
                     start_index = current_index + 1
+                    continue
                 case "^":
-                    result.append(TOKEN_EXP)
+                    appending_buffer.append(TOKEN_EXP)
                     start_index = current_index + 1
+                    continue
                 case "=":
-                    result.append(TOKEN_EQUAL)
+                    appending_buffer.append(TOKEN_EQUAL)
                     start_index = current_index + 1
+                    continue
                 case "/":
-                    if content[current_index+1] == "/":
-                        comment = 1
-                        continue
-                    result.append(TOKEN_DIV)
+                    appending_buffer.append(TOKEN_DIV)
                     start_index = current_index + 1
+                    continue
+                case ",":
+                    appending_buffer.append(TOKEN_COMMA)
+                    start_index = current_index + 1
+                    continue
+                case ".":
+                    appending_buffer.append(TOKEN_DOT)
+                    start_index = current_index + 1
+                    continue
+                case "$":
+                    # We don't append a token, as it'll be appended later
+                    start_index = current_index + 1
+                    dollar_mode = 1
+                    dollar_depth = depth
+                    continue
+                case "#":
+                    comment = 1
+                    start_index = current_index + 1
+                    continue
         if char == "\n":
             comment = 0
             start_index = current_index +1
+        if char == ";":
+            if depth != 0: # Something is unclosed
+                raise Exception(f"Some parenthesis pair was either unopened or unclosed")
             result.append(TOKEN_END)
+            if dollar_mode == 3: # We had some dollar information in this section
+                result.list += dollar_buffer.list
+                result.count += dollar_buffer.count
+                dollar_buffer = TokenList() # We reset the dollar buffer
+            start_index = current_index +1
+
+    if dollar_mode == 3: # We had some dollar information in this section, which got terminated by an eof, and not a ;
+        result.list += dollar_buffer.list
+        result.count += dollar_buffer.count
+        dollar_buffer = TokenList() # We reset the dollar buffer
+
     result.append(TOKEN_EOF)
     return result
 

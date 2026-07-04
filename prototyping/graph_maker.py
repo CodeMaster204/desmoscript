@@ -1,5 +1,5 @@
 import parser as prs
-from typing import List, Tuple
+import lexer as lx
 api_key = "3811e14e71e14f2b83d5fea5e2e13075"
 graph_template = f"""
 <!DOCTYPE html>
@@ -108,11 +108,28 @@ calc_template = f"""{{
 }}
 """
 
-def make_graph(expr_list: List[prs.Expr]) -> str:
+def make_graph(expr_list: list[prs.Expr]) -> str:
     to_return = html_template
     calc_state = calc_template
     latex_expressions = ""
     for i, expr in enumerate(expr_list):
+        if expr.token.id == lx.TOKEN_DOLLAR_ID: # This is a dollar expression, it's already been handled
+            continue
+
+        if i < len(expr_list)-1: # There's still an element left
+            next_expr = expr_list[i+1]
+            if next_expr.token.id == lx.TOKEN_DOLLAR_ID: # Next is a dollar expression
+
+                # What if current expression is a slider
+                if expr.token.id == lx.TOKEN_EQUAL_ID:
+                    if expr.left.token.id == lx.TOKEN_VARIABLE_ID: # These ifs tell us current expression is a slider
+                        # The argument structure is ($ <of> ((start <,> stop)<,> step))
+                        slider_min_expr = next_expr.right.left.left # This will exist if syntax is ok
+                        slider_max_expr = next_expr.right.left.right 
+                        slider_step_expr = next_expr.right.right
+                        latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{expr.latex().replace("\\","\\\\")}","slider":{{"min": {slider_min_expr.latex()}, "max": {slider_max_expr.latex()}, "step": {slider_step_expr.latex()}, "hardMin": true, "hardMax":true}}}}{","if i != len(expr_list)-1 else ""}\n"""
+                        continue
+
         latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{expr.latex().replace("\\","\\\\")}"}}{","if i != len(expr_list)-1 else ""}\n"""
     return to_return.replace("GRAPHDATA", calc_state.replace("EXPRESSIONS", latex_expressions))
 
