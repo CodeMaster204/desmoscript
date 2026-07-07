@@ -87,6 +87,7 @@ TOKEN_EOF_ID = 15
 TOKEN_COMMA_ID = 16
 TOKEN_DOT_ID = 17
 TOKEN_DOLLAR_ID = 18
+TOKEN_PLACEHOLDER_ID = 19 # Used for putting a placeholder for an empty spot in expressions like $(,,2)
 
 # --- Desmos keywords
 TOKEN_COS_ID = 50 # Leaving some space
@@ -121,10 +122,11 @@ id_to_str = {TOKEN_INVALID_ID: "invalid",
              TOKEN_COMMA_ID: "<,>",
              TOKEN_DOT_ID: "<.>",
              TOKEN_DOLLAR_ID: "$",
+             TOKEN_PLACEHOLDER_ID: "<placeholder>",
 
              # --- Desmos keywords
-             TOKEN_COS_ID: "\\cos",
-             TOKEN_POLYGON_ID: "\\operatorname{polygon}",
+             TOKEN_COS_ID: "\\\\cos",
+             TOKEN_POLYGON_ID: "\\\\operatorname{polygon}",
 
              # --- Desmoscript keywords
              TOKEN_RAW_ID: "<raw>",
@@ -147,6 +149,7 @@ TOKEN_RBRA = Token(TOKEN_RBRA_ID)
 TOKEN_COMMA = Token(TOKEN_COMMA_ID)
 TOKEN_DOT = Token(TOKEN_DOT_ID)
 TOKEN_DOLLAR = Token(TOKEN_DOLLAR_ID)
+TOKEN_PLACEHOLDER = Token(TOKEN_PLACEHOLDER_ID)
 TOKEN_EOF = Token(TOKEN_EOF_ID)
 
 
@@ -154,14 +157,20 @@ TOKEN_EOF = Token(TOKEN_EOF_ID)
 TOKEN_COS = Token(TOKEN_COS_ID)
 TOKEN_POLYGON = Token(TOKEN_POLYGON_ID)
 
+# Desmos variables defined by default:
+TOKEN_X_VAR = Token(TOKEN_VARIABLE_ID, "x")
+TOKEN_Y_VAR = Token(TOKEN_VARIABLE_ID, "y")
 # --- Desmoscript keywords
 TOKEN_RAW = Token(TOKEN_RAW_ID)
 
-variables = {}
+variables = {
+        "x": TOKEN_X_VAR,
+        "y": TOKEN_Y_VAR,
+        }
 keywords = {
         "cos": TOKEN_COS,
         "polygon": TOKEN_POLYGON,
-        "raw": TOKEN_RAW
+        "raw": TOKEN_RAW,
         }
 
 def make_token_from_string(num_or_var:str):
@@ -212,6 +221,7 @@ def make_token_from_string(num_or_var:str):
     if number:
         number_token = Token(TOKEN_NUM_ID, data = eval(num_or_var[:first_letter]))
         return [number_token]
+
 
 
 

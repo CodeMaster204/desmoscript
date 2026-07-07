@@ -8,16 +8,28 @@ raw{
     p2 = 1,0;
     polygon(p0,p1,p2);
     p3 = 0,0,0;
-    0,0 = 1,2;
     waitasecond =2;
-    a $(2,3,4) = 2;
+    a $(1, 4,) = 2;
 # this the basic configuration model for things:
    b $(2,4,1) = 0 ;
     c = 0 $(2,4,1);
-    phi = 4 $(4,,2)
+    phi =  $(4,,3) 4;
+    r = 0 $(,,2/3);
+    r = 3 $(,,2/3);
 #    p $(b,0.5,2.5) = 
 # We need to parse
 #   result = 2 if clause else 3 # And clauses too
 #   list = [1,2,23,4,5] # or [(0,0),(1,1)]
 };
+#This is a comment
+#point: color, opacity, thickness, shape, draggable(how), label(text), outline, anchor for label
+# $(white, 0.4, 0.1, cross, no, "${a} ${b}"/ a, yes, nw)
+# $(blue,,,,,,,)
+#function: color, opacity, thickness, shape
+#polygon: color, opacity, thickness, shape, fill_opacity # I need to also see how to incorporate lines being invisible if wanted 
+#all in all:
+#color, opacity, thickness, shape(specific), draggable, label:text, outline, anchor for label, fill_opacity, min, max, step
 
+
+# sliders: done
+# points: doing, drag is only in case of assignment, or via slider

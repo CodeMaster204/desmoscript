@@ -1,7 +1,7 @@
 import lexer as lx
 import parser as prs
 import graph_maker as gmk
-
+import ast_
 
 def compile(filepath: str, outfilepathname: str):
     with open(filepath, "r") as f_in:
@@ -20,8 +20,16 @@ def compile(filepath: str, outfilepathname: str):
                     if expr[0].token.id == lx.TOKEN_RAW_ID:
                         raw_expressions += get_expr_list_from_nest(expr[1])
 
+        ast = ast_.AST(raw_expressions)
+        # for a in ast.ast:
+        #     print("ast-print", a)
+        print("context", ast.context)
+        types = [node.getType() for node in ast.ast]
+        for i in range(len(types)):
+            print("ast-print", types[i], ast.ast[i])
+        
         # TODO: The rest
-        graph_html = gmk.make_graph(raw_expressions)
+        graph_html = gmk.make_graph(ast)
         with open(outfilepathname+".html", "w+") as f_out:
             f_out.write(graph_html)
 

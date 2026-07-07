@@ -1,0 +1,10 @@
+raw{
+    f(x) = x^2 + (a-3) + 5;
+    g(x,y) = 3f(x) - 4a+y; # TODO: 4 a instead of 4a
+    a = 4 $(0,5,1);
+    f(b);
+    b=2;
+    g(a,b);
+    p0 = 0,0;
+    f(cos(2x))
+};

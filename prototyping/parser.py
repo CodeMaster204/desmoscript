@@ -11,6 +11,7 @@ EXPR_BIN = 1
 EXPR_PRE = 2
 EXPR_POST = 3
 
+
 class Expr():
     def __init__(self, token: lx.Token, op_type=EXPR_ATOM):
         """Initializes an expression
@@ -72,19 +73,19 @@ class Expr():
             case lx.TOKEN_MULT_ID:
                 if self.left.token.id == lx.TOKEN_NUM_ID and self.right.token.id == lx.TOKEN_VARIABLE_ID:
                     return self.left.latex() + self.right.latex() 
-                return self.left.latex() + "\\cdot " + self.right.latex()
+                return self.left.latex() + "\\\\cdot " + self.right.latex()
 
             case lx.TOKEN_DIV_ID:
-                return "\\frac{"+ self.left.latex() + "}{" + self.right.latex()+"}"
+                return "\\\\frac{"+ self.left.latex() + "}{" + self.right.latex()+"}"
 
             case lx.TOKEN_EXP_ID:
                 return self.left.latex() + "^{" + self.right.latex()+"}"
 
             case lx.TOKEN_LPAREN_ID:
                 if self.op_type == EXPR_BIN: # Used as an evaluation operator
-                    return self.left.latex(lx.TOKEN_LPAREN_ID) + "\\left(" + self.right.latex(lx.TOKEN_LPAREN_ID) + "\\right)"
+                    return self.left.latex(lx.TOKEN_LPAREN_ID) + "\\\\left(" + self.right.latex(lx.TOKEN_LPAREN_ID) + "\\\\right)"
                 if self.op_type == EXPR_PRE:
-                    return "\\right("+self.right.latex(lx.TOKEN_LPAREN_ID) + "\\right)"
+                    return "\\\\right("+self.right.latex(lx.TOKEN_LPAREN_ID) + "\\\\right)"
                 raise Exception("A left parenthesis needs to either be a binary of prefix operator")
             
             case lx.TOKEN_COMMA_ID: # This is very easy, but the main problem is the parentheses that circle around something
@@ -184,7 +185,13 @@ def nud_lparen(token, token_list): # We don't need a nud for rparen. This functi
     # We parse the rest as normal. Since the right parenthesis will have the place of an operator, and
     # has a lbp of -1, the following will return as soon as a right parenthesis is detected.
     # TODO: Check that pairs of parentheses get detected, and reported
-    return parse_line(token_list, rbp_table[token.id]) 
+    to_return = parse_line(token_list, rbp_table[token.id]) 
+    print("as", to_return, to_return.token)
+    return to_return
+    # to_return = parse(token_list, lx.TOKEN_RPAREN_ID)
+    # if token_list.peek().id == lx.TOKEN_RPAREN_ID:
+    #     token_list.advance()
+    # return to_return
 
 def nud_lcur(token, token_list: lx.TokenList): 
     block: list[Expr] = []
@@ -202,6 +209,14 @@ def nud_dollar(token, token_list):
 
 nud_lbra = nud_lparen # Same mechanics as for the left parenthesis
 
+def nud_comma(token, token_list: lx.TokenList): # This happens in say, following situation: $(1,,3)
+    # to_return = Expr(token, EXPR_BIN)
+    # to_return.left = Expr(lx.TOKEN_PLACEHOLDER, EXPR_ATOM)
+    # to_return.right = parse_line(token_list, rbp_table[lx.TOKEN_COMMA_ID])
+    to_return = Expr(lx.TOKEN_PLACEHOLDER)
+    token_list.current_index-=1 # This is weird, ik, but it does work
+    return to_return
+
 def nud_none(token, token_list):
     raise Exception(f"Tried generating a nud for something ({token}) which doesn't have one: id: {token.id}")
 
@@ -217,7 +232,15 @@ def led_equal(left, token, token_list): # TODO: Check whether = is used correctl
     to_return.left = left
     to_return.right = parse_line(token_list, rbp_table[token.id])
     return to_return
-led_comma = led_equal
+
+def led_comma(left, token, token_list: lx.TokenList): 
+    to_return = Expr(token, EXPR_BIN)
+    to_return.left = left
+    if nud_table[token_list.peek().id] == nud_none: # Arrives in situations like $(1,2,) where a std parse asks for a nud for )
+        to_return.right = Expr(lx.TOKEN_PLACEHOLDER)
+    else:
+        to_return.right = parse_line(token_list, rbp_table[token.id])
+    return to_return
 
 def led_rparen(left, token, token_list):
     # The right parenthesis should return whatever the expression was before, that is, the left, and get itself out of the way
@@ -269,7 +292,7 @@ rbp_table = {
              lx.TOKEN_MULT_ID: 31,
              lx.TOKEN_DIV_ID: 31,
              lx.TOKEN_EXP_ID: 40,
-             lx.TOKEN_EQUAL_ID: 11,
+             lx.TOKEN_EQUAL_ID: 3,
              lx.TOKEN_END_ID: 0,
              lx.TOKEN_EOF_ID: 0,
              lx.TOKEN_LPAREN_ID: 6, # We want this to sniff out a right parenthesis, but not a newline
@@ -278,7 +301,7 @@ rbp_table = {
              lx.TOKEN_RCUR_ID: None,
              lx.TOKEN_LBRA_ID: None, 
              lx.TOKEN_RBRA_ID: None,
-             lx.TOKEN_COMMA_ID: 16,
+             lx.TOKEN_COMMA_ID: 14,
              lx.TOKEN_DOT_ID: None, #  as of now
 
              # --- Desmos keywords
@@ -308,7 +331,7 @@ nud_table = {
              lx.TOKEN_RCUR_ID: nud_none,
              lx.TOKEN_LBRA_ID: nud_lbra,
              lx.TOKEN_RBRA_ID: nud_none,
-             lx.TOKEN_COMMA_ID: nud_none,
+             lx.TOKEN_COMMA_ID: nud_comma,
              lx.TOKEN_DOT_ID: nud_none,
 
              # --- Desmos keywords
