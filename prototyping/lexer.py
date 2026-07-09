@@ -33,7 +33,7 @@ class Token:
             if len(datastr) == 1:
                 return datastr
             return datastr[0] + "_{" + datastr[1:] +"}" # We subscript the rest of it
-        elif self.id in [TOKEN_COS_ID, TOKEN_POLYGON_ID]:
+        elif self.id in [TOKEN_COS_ID, TOKEN_POLYGON_ID, TOKEN_RGB_ID]:
             return id_to_str[self.id]
         else:
             raise Exception(f"The Token.latex() function is only defined on numbers and variables and keyword functions, not on {self}")
@@ -93,6 +93,7 @@ TOKEN_PLACEHOLDER_ID = 19 # Used for putting a placeholder for an empty spot in 
 TOKEN_COS_ID = 50 # Leaving some space
 
 TOKEN_POLYGON_ID = 75 # Leaving some space
+TOKEN_RGB_ID = 76
 
 # Desmoscript keywords
 TOKEN_RAW_ID = 100
@@ -127,6 +128,7 @@ id_to_str = {TOKEN_INVALID_ID: "invalid",
              # --- Desmos keywords
              TOKEN_COS_ID: "\\\\cos",
              TOKEN_POLYGON_ID: "\\\\operatorname{polygon}",
+             TOKEN_RGB_ID: "\\\\operatorname{rgb}",
 
              # --- Desmoscript keywords
              TOKEN_RAW_ID: "<raw>",
@@ -156,6 +158,7 @@ TOKEN_EOF = Token(TOKEN_EOF_ID)
 # --- Desmos keywords
 TOKEN_COS = Token(TOKEN_COS_ID)
 TOKEN_POLYGON = Token(TOKEN_POLYGON_ID)
+TOKEN_RGB = Token(TOKEN_RGB_ID)
 
 # Desmos variables defined by default:
 TOKEN_X_VAR = Token(TOKEN_VARIABLE_ID, "x")
@@ -168,20 +171,22 @@ variables = {
         "y": TOKEN_Y_VAR,
         }
 keywords = {
+        "raw": TOKEN_RAW,
+
         "cos": TOKEN_COS,
         "polygon": TOKEN_POLYGON,
-        "raw": TOKEN_RAW,
+        "rgb": TOKEN_RGB,
         }
 
 def make_token_from_string(num_or_var:str):
     
     """This is meant to parse stuff like 234xyz45 and spit out [234, xyz_{45}], and raise an error if the format is wrong. LATER, we will also parse 56hi_th3re into 56*hi_{th3re} and similar stuff
     """
-    if not num_or_var.isalnum():
+    if set(num_or_var) in set("abcdefghijmnopqrstuvwxyz0123456789.") != set():
         print(f"Invalid token generated, tried interpreting <{num_or_var}>")
         return [TOKEN_INVALID]
 
-    number = num_or_var[0].isdigit() # Whether we have a number in front of the word
+    number = num_or_var[0] in set("0123456789.") # Whether we have a number in front of the word
     word = 0 # whether we have a word
     subscript = 0 # Whether we have a subscript
     first_letter = 0
@@ -238,7 +243,7 @@ def tokenize_str(content) -> TokenList:
     content = content + '\n' # We add a newline character to get an end token no matter what
     for current_index in range(len(content)):
         char = content[current_index]
-        if char in " $()+-*^/=\n{}[];#,." and not comment: 
+        if char in " $()+-*^/=\n{}[];#," and not comment: 
             if current_index > start_index:
                 token = make_token_from_string(content[start_index: current_index])
                 appending_buffer.list += token
@@ -311,10 +316,6 @@ def tokenize_str(content) -> TokenList:
                     continue
                 case ",":
                     appending_buffer.append(TOKEN_COMMA)
-                    start_index = current_index + 1
-                    continue
-                case ".":
-                    appending_buffer.append(TOKEN_DOT)
                     start_index = current_index + 1
                     continue
                 case "$":

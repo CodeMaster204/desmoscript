@@ -122,7 +122,7 @@ class Expr():
                 return self.left.latex() + "=" +self.right.latex()
 
                 # --- Desmos keywords
-            case lx.TOKEN_COS_ID | lx.TOKEN_POLYGON_ID:
+            case lx.TOKEN_COS_ID | lx.TOKEN_POLYGON_ID | lx.TOKEN_RGB_ID:
                 return self.token.latex()
 
                 # --- Desmoscript keywords
@@ -154,13 +154,11 @@ def nud_dsm_func(token: lx.Token, token_list):
     """Function for desmos default keywords, like cos, int or prod
     """
     match token.id:
-        case lx.TOKEN_COS_ID:
+        case lx.TOKEN_COS_ID | lx.TOKEN_POLYGON_ID | lx.TOKEN_RGB_ID:
             # Those are functions of some arguments, and act as function calls, meaning the led_lparen will handle everything for us
             return Expr(token)
-        case lx.TOKEN_POLYGON_ID:
-            # Those are functions of some arguments, and act as function calls, meaning the led_lparen will handle everything for us
-            return Expr(token)
-    return Expr(lx.TOKEN_INVALID_ID)
+        case _:
+            return Expr(lx.TOKEN_INVALID_ID)
 
 def nud_dsmsp_kw(token, token_list):
     """Function for desmoscript default keywords, like raw
@@ -277,6 +275,7 @@ lbp_table = {
              # --- Desmos keywords
              lx.TOKEN_COS_ID: None,
              lx.TOKEN_POLYGON_ID: None,
+             lx.TOKEN_RGB_ID: None,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: None,
@@ -307,6 +306,7 @@ rbp_table = {
              # --- Desmos keywords
              lx.TOKEN_COS_ID: None,
              lx.TOKEN_POLYGON_ID: None,
+             lx.TOKEN_RGB_ID: None,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: None,
@@ -337,6 +337,7 @@ nud_table = {
              # --- Desmos keywords
              lx.TOKEN_COS_ID: nud_dsm_func,
              lx.TOKEN_POLYGON_ID: nud_dsm_func,
+             lx.TOKEN_RGB_ID: nud_dsm_func,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: nud_dsmsp_kw,
@@ -367,6 +368,7 @@ led_table = {
              # --- Desmos keywords
              lx.TOKEN_COS_ID: led_none,
              lx.TOKEN_POLYGON_ID: led_none,
+             lx.TOKEN_RGB_ID: led_none,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: led_none,

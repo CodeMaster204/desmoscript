@@ -167,6 +167,57 @@ def make_graph(ast: ast_.AST) -> str:
                     latex_expressions += f"}}}}{",\n"if i != len(ast.ast)-1 else ""}"
                     continue
 
+
+                # Dollar expressions for points
+                # Format is
+                # color opacity thickness   shape   draggable   label
+                # outline   anchor for label
+                if node.nodetype == ast_.ASTNode.VarAssign and node.getType() == ast_.TYPE_POINT:
+
+                    config_strs = ["" for i in range(8)] # TODO: Check the range is good
+
+                    expected_types = [ast_.TYPE_COLOR,  # Color
+                                      ast_.TYPE_NUM,    # opacity
+                                      ast_.TYPE_NUM,    # Thickness
+                                      ast_.TYPE_NUM,    # Shape
+                                      ast_.TYPE_NUM,    # Draggable
+                                      #ast_.TYPE_str,   # Label
+                                      ast_.TYPE_NUM,    # Outline
+                                      ast_.TYPE_NUM     # Anchor
+                                      ]
+
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+                    print(next_node.dollar_list)
+
+                    for i in range(min(len(next_node.dollar_list), 3)): # TODO: Take 3 down to the whole 8 argument
+                        if next_node.dollar_list[i].token.id != lx.TOKEN_PLACEHOLDER_ID:
+                            if ast.getExprTypeFromGlobalContext(next_node.dollar_list[i]) != expected_types[i]:
+                                raise Exception(f"Expected type {expected_types[i]} for {i}-th argument (here {next_node.dollar_list[i]}) for point dollar expression, got {ast.getExprTypeFromGlobalContext(next_node.dollar_list[i])}")
+                            match i:
+                                case 0: # Color
+                                    config_strs[i] = f', "colorLatex": "{next_node.dollar_list[i].latex()}"'
+                                case 1: # Opacity
+                                    config_strs[i] = f', "pointOpacity": "{next_node.dollar_list[i].latex()}"'
+                                case 2: # Thickness
+                                    latex = next_node.dollar_list[i].latex()
+                                    config_strs[i] = f', "pointSize": "{latex}", "movablePointSize": "{latex}"'
+                            latex_expressions += config_strs[i]
+
+                    # And we finish off
+                    latex_expressions += f"}}{",\n"if i != len(ast.ast)-1 else ""}"
+                    continue
+
+
+
+
+
+
+
+
+                    
+
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+
         latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}"}}{","if i != len(ast.ast)-1 else ""}\n"""
     return to_return.replace("GRAPHDATA", calc_state.replace("EXPRESSIONS", latex_expressions))
 

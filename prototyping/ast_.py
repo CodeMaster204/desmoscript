@@ -41,6 +41,7 @@ TYPE_NUM = 1 # Just anything that resolves to a number
 TYPE_POINT = 2 # same for points
 TYPE_POINT3D = 3 # same for points(3D)
 TYPE_POLYGON = 4 # and same for polygons
+TYPE_COLOR = 5 # For stuff like rgb(100,100,100)
 
 def type_add(tp1: int, tp2: int):
     """returns the result of adding two types
@@ -227,7 +228,8 @@ class ASTNode:
 
         elif expr.token.id == lx.TOKEN_DOLLAR_ID:
             self.nodetype = ASTNode.DollarExpr
-            self.dollar_list = get_list_of_params_from_lparen(expr.right)
+            self.dollar_list = get_list_of_params_from_lparen(expr)
+            print("aseas", self.dollar_list)
 
         else:
             self.nodetype = ASTNode.Instance
@@ -254,7 +256,7 @@ def get_list_of_params_from_lparen(expr: prs.Expr)->list[prs.Expr]:
     """Returns a list of expressions, unpacked out of the comma bs
 
     Args:
-        expr: the expression (a comma, with one left and maybe a chain down on right i.e. right associative)
+        expr: the expression (the first element above and left of the first comma if existing. Essentially the function of an lparen)
     """
     to_return: list[prs.Expr] = []
     # First, if there's only one variable:
@@ -262,7 +264,7 @@ def get_list_of_params_from_lparen(expr: prs.Expr)->list[prs.Expr]:
         to_return.append(expr.right)
         return to_return
     #Now, if there's multiple variables, there's at least *one* comma:
-    current_comma = expr
+    current_comma = expr.right
     while current_comma.right.token.id == lx.TOKEN_COMMA_ID: # As long as parameters remain
         to_return.append(current_comma.left)
         current_comma = current_comma.right
@@ -342,7 +344,14 @@ def getExprType(expr: prs.Expr, context: dict[lx.Token, ASTNode] = {})->int:
                 case lx.TOKEN_POLYGON_ID:
                     # TODO check stuff
                     return TYPE_POLYGON
-                case _:
+                case lx.TOKEN_RGB_ID:
+                    if len(params) != 3:
+                        raise Exception(f"Expected 3 arguments for the rbg function, got {len(params)}: {params}")
+                    if types[0] != TYPE_NUM or types[1] != TYPE_NUM or types[2] != TYPE_NUM:
+                        raise Exception("Expected numbers for arguments in rgb function")
+                    return TYPE_COLOR
+
+                case _: # An arbitrary function call from a nice function (doesn't do type magic), typically custom-defined
                     if not expr.left.token in context: # Unresolved dependency
                         raise Exception(f"Unresolved dependency: {expr.left}, context: {context}")
                     f_node = context[expr.left.token] # We get the function's node
