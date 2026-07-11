@@ -230,6 +230,14 @@ def led_equal(left, token, token_list): # TODO: Check whether = is used correctl
     to_return.right = parse_line(token_list, rbp_table[token.id])
     return to_return
 
+def led_atom(left, token, token_list: lx.TokenList):
+    # An atom (num or variable) is not meant to be used as an operator. However, if that's the case, we insert a multiplication before and treat it as such
+    to_return = Expr(lx.TOKEN_MULT, EXPR_BIN)
+    to_return.left = left
+    token_list.current_index-=1
+    to_return.right = parse_line(token_list, rbp_table[lx.TOKEN_MULT_ID])
+    return to_return
+
 def led_comma(left, token, token_list: lx.TokenList): 
     to_return = Expr(token, EXPR_BIN)
     to_return.left = left
@@ -251,8 +259,8 @@ def led_none(left, token, token_list):
 
 lbp_table = {
              lx.TOKEN_INVALID_ID: None,
-             lx.TOKEN_NUM_ID: None,
-             lx.TOKEN_VARIABLE_ID: None,
+             lx.TOKEN_NUM_ID: 30, #None, # We put the same lbp as multiplication in order to consider stuff like a 2 b as  a*2*b
+             lx.TOKEN_VARIABLE_ID: 30, # None,
              lx.TOKEN_DOLLAR_ID: None, # the dollar sign acts as a prefix operator
              lx.TOKEN_PLUS_ID: 20,
              lx.TOKEN_MINUS_ID: 20,
@@ -280,8 +288,8 @@ lbp_table = {
 
 rbp_table = {
              lx.TOKEN_INVALID_ID: None,
-             lx.TOKEN_NUM_ID: None,
-             lx.TOKEN_VARIABLE_ID: None,
+             lx.TOKEN_NUM_ID: 31, # None,
+             lx.TOKEN_VARIABLE_ID: 31, # None,
              lx.TOKEN_DOLLAR_ID: 0, # We want everything except for an end/eof to kill it
              lx.TOKEN_PLUS_ID: 21,
              lx.TOKEN_MINUS_ID: 21,
@@ -338,8 +346,8 @@ nud_table = {
 
 led_table = {
              lx.TOKEN_INVALID_ID: led_none,
-             lx.TOKEN_NUM_ID: led_none,
-             lx.TOKEN_VARIABLE_ID: led_none,
+             lx.TOKEN_NUM_ID: led_atom,
+             lx.TOKEN_VARIABLE_ID: led_atom,
              lx.TOKEN_DOLLAR_ID: led_none,
              lx.TOKEN_PLUS_ID: led_bin_op,
              lx.TOKEN_MINUS_ID: led_bin_op,

@@ -184,6 +184,15 @@ TOKEN_PTSHAPE_TRIANGLE = Token(TOKEN_VARIABLE_ID, data = "t_{riangle}")
 TOKEN_PTSHAPE_DIAMOND = Token(TOKEN_VARIABLE_ID, data = "d_{iamond}")
 TOKEN_PTSHAPE_STAR = Token(TOKEN_VARIABLE_ID, data = "s_{tar}")
 
+TOKEN_PTDRAG_NO = Token(TOKEN_VARIABLE_ID, data = "n_{o}")
+TOKEN_PTDRAG_XY = Token(TOKEN_VARIABLE_ID, data = "x_{y}")
+# The horizontal and vertical ones are handled with the normal x and y tokens
+
+
+TOKEN_LINESTYLE_LINE = Token(TOKEN_VARIABLE_ID, data = "l_{ine}")
+TOKEN_LINESTYLE_DASHES = Token(TOKEN_VARIABLE_ID, data = "d_{ashes}")
+TOKEN_LINESTYLE_DOTS = Token(TOKEN_VARIABLE_ID, data = "d_{ots}")
+
 # Desmos variables defined by default:
 TOKEN_X_VAR = Token(TOKEN_VARIABLE_ID, "x")
 TOKEN_Y_VAR = Token(TOKEN_VARIABLE_ID, "y")
@@ -208,6 +217,12 @@ variables = {
         "triangle": TOKEN_PTSHAPE_TRIANGLE,
         "diamond": TOKEN_PTSHAPE_DIAMOND,
         "star": TOKEN_PTSHAPE_STAR,
+
+        "no": TOKEN_PTDRAG_NO,
+        "xy": TOKEN_PTDRAG_XY,
+        "line": TOKEN_LINESTYLE_LINE,
+        "dots": TOKEN_LINESTYLE_DOTS,
+        "dashes": TOKEN_LINESTYLE_DASHES,
         }
 keywords = {
         "raw": TOKEN_RAW,
@@ -249,6 +264,31 @@ ptshape_token_to_latex = {
         TOKEN_PTSHAPE_DIAMOND: ',"__stashed_V12PointStyle": "DIAMOND"',
         TOKEN_PTSHAPE_STAR: ',"__stashed_V12PointStyle": "STAR"',
         }
+default_ptdrag_tokens = [
+        TOKEN_PTDRAG_NO,
+        TOKEN_PTDRAG_XY,
+        TOKEN_X_VAR,
+        TOKEN_Y_VAR,
+        ]
+ptdrag_token_to_latex = {
+        TOKEN_PTDRAG_NO: ',"dragMode":"NONE"',
+        TOKEN_PTDRAG_XY: ',"dragMode":"XY"',
+        TOKEN_X_VAR: ',"dragMode":"X"',
+        TOKEN_Y_VAR: ',"dragMode":"Y"',
+        }
+default_linestyle_tokens = [
+        TOKEN_LINESTYLE_LINE,
+        TOKEN_LINESTYLE_DASHES,
+        TOKEN_LINESTYLE_DOTS,
+        ]
+linestyle_token_to_latex = {
+        TOKEN_LINESTYLE_LINE: ',"lines":true',
+        TOKEN_LINESTYLE_DASHES: ',"lineStyle": "DASHED"',
+        TOKEN_LINESTYLE_DOTS: ',"lineStyle": "DOTTED"',
+        }
+
+
+
 dsm_kw_id_to_str = {
         KW_COS_ID: "\\\\cos",
         KW_POLYGON_ID: "\\\\operatorname{polygon}",

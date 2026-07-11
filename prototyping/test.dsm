@@ -3,13 +3,17 @@
 #    yrange;:10,100
 #} -
 raw{
+    x^2 - 2x + 2 x  x x x $(col1, 0.5, , dots);
+    f(x) = x^2 $(green, , 1, dashes);
     t= 2,2 $(green);
     col1 = rgb(0,0,0);
-    p0 = -1,0 $(col1, 0.5, 10, star); # Color, opacity, thickness, shape, draggable, label, anchor for label, outline
+    p0 = -1,0 $(col1, 0.5, 10, star, y); # Color, opacity, thickness, shape, draggable, label, anchor for label, outline
+    (no,no^2) $(orange, 1, 15, triangle, xy);
+    no = 0;
     p1 = 0,1 $(rgb(101,10,1),, 20);
 star = 2;
-    p2 = 1,0;
-    polygon(p0,p1,p2);
+    p2 = 1,0; $(orange);
+    polygon(p0,p1,p2) $(orange, 0.5, 0.1, 2, dots);
     p3 = 0,0,0;
     waitasecond =2;
     a $(1, 4,) = 2;
@@ -28,8 +32,10 @@ star = 2;
 #point: color, opacity, thickness, shape, draggable(how), label(text), outline, anchor for label
 # $(white, 0.4, 0.1, cross, no, "${a} ${b}"/ a, yes, nw)
 # $(blue,,,,,,,)
-#function: color, opacity, thickness, shape
-#polygon: color, opacity, thickness, shape, fill_opacity # I need to also see how to incorporate lines being invisible if wanted 
+#function: color, opacity, thickness, linestyle
+#polygon: color, opacity, thickness, linestyle, fill_opacity # I need to also see how to incorporate lines being invisible if wanted 
 #all in all:
 #color, opacity, thickness, shape(specific), draggable, label:text, outline, anchor for label, fill_opacity, min, max, step
+
+# I need to see how to turn on/off certain features (lines for polygons, hidden for basically everything, $h? and others.) Then, finish with label, anchor for label and outline for points, hide lines/fill for polygons, and I am done with $-expressions
 

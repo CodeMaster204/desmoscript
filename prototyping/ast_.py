@@ -45,6 +45,8 @@ TYPE_POINT3D = 3 # same for points(3D)
 TYPE_POLYGON = 4 # and same for polygons
 TYPE_COLOR = 5 # For stuff like rgb(100,100,100)
 TYPE_PTSHAPE = 6 # Point shape
+TYPE_PTDRAG = 7 # Draggable qualifier (xy, no, x, and y, in the appropriate context)
+TYPE_LINESTYLE = 8 # Stuff like dashed, dotted etc.
 
 def type_add(tp1: int, tp2: int):
     """returns the result of adding two types
@@ -245,7 +247,9 @@ class ASTNode:
             return self.instancetype
         # if not, well here we go:
         match self.nodetype:
-            case ASTNode.FuncDef: # Function definitions have no instance type
+            case ASTNode.FuncDef: # Function definitions usually don't have any type, since they aren't instances, but functions like f(x) = x^2 do have an (implied) instance being num.
+                # As such, we return none, but *if* a function def does have a type, it *has* to be a num.
+                # Code oughta use this fact
                 return TYPE_NONE
             case ASTNode.Instance:
                 self.instancetype = getExprType(self.expr, self.global_context)
@@ -374,6 +378,14 @@ def getExprType(expr: prs.Expr, context: dict[lx.Token, ASTNode] = {})->int:
 CONTEXT_PTSHAPE = {}
 for token in lx.default_ptshape_tokens:
     CONTEXT_PTSHAPE[token] = ASTNode(prs.Expr(token), {}, TYPE_PTSHAPE)
+
+CONTEXT_PTDRAG = {}
+for token in lx.default_ptdrag_tokens:
+    CONTEXT_PTDRAG[token] = ASTNode(prs.Expr(token), {}, TYPE_PTDRAG)
+
+CONTEXT_LINESTYLE = {}
+for token in lx.default_linestyle_tokens:
+    CONTEXT_LINESTYLE[token] = ASTNode(prs.Expr(token), {}, TYPE_LINESTYLE)
 
 class AST():
     def __init__(self, exprs: list[prs.Expr]):
