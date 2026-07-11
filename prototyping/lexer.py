@@ -21,6 +21,8 @@ class Token:
         ret = ""
         if self.id == TOKEN_NUM_ID or self.id == TOKEN_VARIABLE_ID:
             ret = str(self.data)
+        elif self.id == TOKEN_DSM_FUNC_ID:
+            ret = dsm_kw_id_to_str[self.data]
         else:
             ret = id_to_str[self.id]
         return ret
@@ -30,11 +32,11 @@ class Token:
             return str(self.data)
         elif self.id == TOKEN_VARIABLE_ID:
             datastr = str(self.data)
-            if len(datastr) == 1:
-                return datastr
-            return datastr[0] + "_{" + datastr[1:] +"}" # We subscript the rest of it
-        elif self.id in [TOKEN_COS_ID, TOKEN_POLYGON_ID, TOKEN_RGB_ID]:
-            return id_to_str[self.id]
+            # if len(datastr) == 1:
+            return datastr
+            # return datastr[0] + "_{" + datastr[1:] +"}" # We subscript the rest of it
+        elif self.id == TOKEN_DSM_FUNC_ID:
+            return dsm_kw_id_to_str[self.data]
         else:
             raise Exception(f"The Token.latex() function is only defined on numbers and variables and keyword functions, not on {self}")
 
@@ -90,10 +92,12 @@ TOKEN_DOLLAR_ID = 18
 TOKEN_PLACEHOLDER_ID = 19 # Used for putting a placeholder for an empty spot in expressions like $(,,2)
 
 # --- Desmos keywords
-TOKEN_COS_ID = 50 # Leaving some space
+TOKEN_DSM_FUNC_ID = 50 # Desmos functions
 
-TOKEN_POLYGON_ID = 75 # Leaving some space
-TOKEN_RGB_ID = 76
+# TOKEN_COS_ID = 50 # Leaving some space
+#
+# TOKEN_POLYGON_ID = 75 # Leaving some space
+# TOKEN_RGB_ID = 76
 
 # Desmoscript keywords
 TOKEN_RAW_ID = 100
@@ -126,9 +130,9 @@ id_to_str = {TOKEN_INVALID_ID: "invalid",
              TOKEN_PLACEHOLDER_ID: "<placeholder>",
 
              # --- Desmos keywords
-             TOKEN_COS_ID: "\\\\cos",
-             TOKEN_POLYGON_ID: "\\\\operatorname{polygon}",
-             TOKEN_RGB_ID: "\\\\operatorname{rgb}",
+             # TOKEN_COS_ID: "\\\\cos",
+             # TOKEN_POLYGON_ID: "\\\\operatorname{polygon}",
+             # TOKEN_RGB_ID: "\\\\operatorname{rgb}",
 
              # --- Desmoscript keywords
              TOKEN_RAW_ID: "<raw>",
@@ -156,9 +160,29 @@ TOKEN_EOF = Token(TOKEN_EOF_ID)
 
 
 # --- Desmos keywords
-TOKEN_COS = Token(TOKEN_COS_ID)
-TOKEN_POLYGON = Token(TOKEN_POLYGON_ID)
-TOKEN_RGB = Token(TOKEN_RGB_ID)
+KW_COS_ID = 0
+TOKEN_COS = Token(TOKEN_DSM_FUNC_ID, data = KW_COS_ID)
+KW_POLYGON_ID = 1
+TOKEN_POLYGON = Token(TOKEN_DSM_FUNC_ID, data = KW_POLYGON_ID)
+KW_RGB_ID = 2
+TOKEN_RGB = Token(TOKEN_DSM_FUNC_ID, data = KW_RGB_ID)
+
+TOKEN_COL_RED = Token(TOKEN_VARIABLE_ID, data = "\\\\operatorname{rgb}(199, 68, 64)")
+TOKEN_COL_BLUE = Token(TOKEN_VARIABLE_ID, data = "\\\\operatorname{rgb}(45, 112, 179)")
+TOKEN_COL_GREEN = Token(TOKEN_VARIABLE_ID, data = "\\\\operatorname{rgb}(56, 140, 70)")
+TOKEN_COL_ORANGE = Token(TOKEN_VARIABLE_ID, data = "\\\\operatorname{rgb}(250, 126, 25)")
+TOKEN_COL_PURPLE = Token(TOKEN_VARIABLE_ID, data = "\\\\operatorname{rgb}(96, 66, 166)")
+TOKEN_COL_BLACK = Token(TOKEN_VARIABLE_ID, data = "\\\\operatorname{rgb}(0, 0, 0)")
+
+# Point shape variables, which'll be available only in a local context for the point dollar expression
+TOKEN_PTSHAPE_DOT = Token(TOKEN_VARIABLE_ID, data = "d_{ot}")
+TOKEN_PTSHAPE_CIRCLE = Token(TOKEN_VARIABLE_ID, data = "c_{ircle}")
+TOKEN_PTSHAPE_CROSS = Token(TOKEN_VARIABLE_ID, data = "c_{ross}")
+TOKEN_PTSHAPE_SQUARE = Token(TOKEN_VARIABLE_ID, data = "s_{quare}")
+TOKEN_PTSHAPE_PLUS = Token(TOKEN_VARIABLE_ID, data = "p_{lus}")
+TOKEN_PTSHAPE_TRIANGLE = Token(TOKEN_VARIABLE_ID, data = "t_{riangle}")
+TOKEN_PTSHAPE_DIAMOND = Token(TOKEN_VARIABLE_ID, data = "d_{iamond}")
+TOKEN_PTSHAPE_STAR = Token(TOKEN_VARIABLE_ID, data = "s_{tar}")
 
 # Desmos variables defined by default:
 TOKEN_X_VAR = Token(TOKEN_VARIABLE_ID, "x")
@@ -169,6 +193,21 @@ TOKEN_RAW = Token(TOKEN_RAW_ID)
 variables = {
         "x": TOKEN_X_VAR,
         "y": TOKEN_Y_VAR,
+        "red": TOKEN_COL_RED,
+        "blue": TOKEN_COL_BLUE,
+        "green": TOKEN_COL_GREEN,
+        "orange": TOKEN_COL_ORANGE,
+        "purple": TOKEN_COL_PURPLE,
+        "black": TOKEN_COL_BLACK,
+
+        "dot": TOKEN_PTSHAPE_DOT,
+        "circle": TOKEN_PTSHAPE_CIRCLE,
+        "cross": TOKEN_PTSHAPE_CROSS,
+        "square": TOKEN_PTSHAPE_SQUARE,
+        "plus": TOKEN_PTSHAPE_PLUS,
+        "triangle": TOKEN_PTSHAPE_TRIANGLE,
+        "diamond": TOKEN_PTSHAPE_DIAMOND,
+        "star": TOKEN_PTSHAPE_STAR,
         }
 keywords = {
         "raw": TOKEN_RAW,
@@ -177,11 +216,50 @@ keywords = {
         "polygon": TOKEN_POLYGON,
         "rgb": TOKEN_RGB,
         }
+# lists for easier modulation and modification in the future
+default_variable_tokens = [
+        TOKEN_X_VAR,
+        TOKEN_Y_VAR
+        ]
+default_color_tokens = [
+        TOKEN_COL_RED,
+        TOKEN_COL_BLUE,
+        TOKEN_COL_GREEN,
+        TOKEN_COL_ORANGE,
+        TOKEN_COL_PURPLE,
+        TOKEN_COL_BLACK,
+        ]
+default_ptshape_tokens = [
+        TOKEN_PTSHAPE_DOT,
+        TOKEN_PTSHAPE_CIRCLE,
+        TOKEN_PTSHAPE_CROSS,
+        TOKEN_PTSHAPE_SQUARE,
+        TOKEN_PTSHAPE_PLUS,
+        TOKEN_PTSHAPE_TRIANGLE,
+        TOKEN_PTSHAPE_DIAMOND,
+        TOKEN_PTSHAPE_STAR,
+        ]
+ptshape_token_to_latex = {
+        TOKEN_PTSHAPE_DOT: "",
+        TOKEN_PTSHAPE_CIRCLE: ',"pointStyle": "OPEN"',
+        TOKEN_PTSHAPE_CROSS: ',"pointStyle":"CROSS"',
+        TOKEN_PTSHAPE_SQUARE: ',"__stashed_V12PointStyle": "SQUARE"',
+        TOKEN_PTSHAPE_PLUS: ',"__stashed_V12PointStyle": "PLUS"',
+        TOKEN_PTSHAPE_TRIANGLE: ',"__stashed_V12PointStyle": "TRIANGLE"',
+        TOKEN_PTSHAPE_DIAMOND: ',"__stashed_V12PointStyle": "DIAMOND"',
+        TOKEN_PTSHAPE_STAR: ',"__stashed_V12PointStyle": "STAR"',
+        }
+dsm_kw_id_to_str = {
+        KW_COS_ID: "\\\\cos",
+        KW_POLYGON_ID: "\\\\operatorname{polygon}",
+        KW_RGB_ID: "\\\\operatorname{rgb}",
+        }
 
 def make_token_from_string(num_or_var:str):
     
     """This is meant to parse stuff like 234xyz45 and spit out [234, xyz_{45}], and raise an error if the format is wrong. LATER, we will also parse 56hi_th3re into 56*hi_{th3re} and similar stuff
     """
+    num_or_var = num_or_var.replace("_","") # These are the same in this language, so just use them for fun, or don"t
     if set(num_or_var) in set("abcdefghijmnopqrstuvwxyz0123456789.") != set():
         print(f"Invalid token generated, tried interpreting <{num_or_var}>")
         return [TOKEN_INVALID]
@@ -215,7 +293,10 @@ def make_token_from_string(num_or_var:str):
         elif compound_word in variables:
             word_token = variables[compound_word]
         else:
-            word_token = Token(TOKEN_VARIABLE_ID, data=compound_word)
+            word_data = compound_word
+            if len(compound_word) >1: # We need to split it into desmos standards
+                word_data = compound_word[0] + r"_{" + compound_word[1:] + r"}"
+            word_token = Token(TOKEN_VARIABLE_ID, data=word_data)
             variables[compound_word] = word_token
 
         if number:

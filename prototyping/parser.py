@@ -122,7 +122,7 @@ class Expr():
                 return self.left.latex() + "=" +self.right.latex()
 
                 # --- Desmos keywords
-            case lx.TOKEN_COS_ID | lx.TOKEN_POLYGON_ID | lx.TOKEN_RGB_ID:
+            case lx.TOKEN_DSM_FUNC_ID:
                 return self.token.latex()
 
                 # --- Desmoscript keywords
@@ -154,7 +154,7 @@ def nud_dsm_func(token: lx.Token, token_list):
     """Function for desmos default keywords, like cos, int or prod
     """
     match token.id:
-        case lx.TOKEN_COS_ID | lx.TOKEN_POLYGON_ID | lx.TOKEN_RGB_ID:
+        case lx.TOKEN_DSM_FUNC_ID:
             # Those are functions of some arguments, and act as function calls, meaning the led_lparen will handle everything for us
             return Expr(token)
         case _:
@@ -184,7 +184,6 @@ def nud_lparen(token, token_list): # We don't need a nud for rparen. This functi
     # has a lbp of -1, the following will return as soon as a right parenthesis is detected.
     # TODO: Check that pairs of parentheses get detected, and reported
     to_return = parse_line(token_list, rbp_table[token.id]) 
-    print("as", to_return, to_return.token)
     return to_return
     # to_return = parse(token_list, lx.TOKEN_RPAREN_ID)
     # if token_list.peek().id == lx.TOKEN_RPAREN_ID:
@@ -273,9 +272,7 @@ lbp_table = {
              lx.TOKEN_DOT_ID: None, #as of now
 
              # --- Desmos keywords
-             lx.TOKEN_COS_ID: None,
-             lx.TOKEN_POLYGON_ID: None,
-             lx.TOKEN_RGB_ID: None,
+             lx.TOKEN_DSM_FUNC_ID: None,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: None,
@@ -304,9 +301,7 @@ rbp_table = {
              lx.TOKEN_DOT_ID: None, #  as of now
 
              # --- Desmos keywords
-             lx.TOKEN_COS_ID: None,
-             lx.TOKEN_POLYGON_ID: None,
-             lx.TOKEN_RGB_ID: None,
+             lx.TOKEN_DSM_FUNC_ID: None,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: None,
@@ -335,9 +330,7 @@ nud_table = {
              lx.TOKEN_DOT_ID: nud_none,
 
              # --- Desmos keywords
-             lx.TOKEN_COS_ID: nud_dsm_func,
-             lx.TOKEN_POLYGON_ID: nud_dsm_func,
-             lx.TOKEN_RGB_ID: nud_dsm_func,
+             lx.TOKEN_DSM_FUNC_ID: nud_dsm_func,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: nud_dsmsp_kw,
@@ -366,9 +359,7 @@ led_table = {
              lx.TOKEN_DOT_ID: led_none,
 
              # --- Desmos keywords
-             lx.TOKEN_COS_ID: led_none,
-             lx.TOKEN_POLYGON_ID: led_none,
-             lx.TOKEN_RGB_ID: led_none,
+             lx.TOKEN_DSM_FUNC_ID: led_none,
              
              # --- Desmoscript keywords
              lx.TOKEN_RAW_ID: led_none,

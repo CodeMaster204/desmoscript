@@ -176,23 +176,24 @@ def make_graph(ast: ast_.AST) -> str:
 
                     config_strs = ["" for i in range(8)] # TODO: Check the range is good
 
-                    expected_types = [ast_.TYPE_COLOR,  # Color
-                                      ast_.TYPE_NUM,    # opacity
-                                      ast_.TYPE_NUM,    # Thickness
-                                      ast_.TYPE_NUM,    # Shape
-                                      ast_.TYPE_NUM,    # Draggable
-                                      #ast_.TYPE_str,   # Label
-                                      ast_.TYPE_NUM,    # Outline
-                                      ast_.TYPE_NUM     # Anchor
-                                      ]
+                    expected_types_with_context = [
+                            (ast_.TYPE_COLOR, None),                    # Color
+                            (ast_.TYPE_NUM, None),                       # opacity
+                            (ast_.TYPE_NUM, None),                       # Thickness
+                            (ast_.TYPE_PTSHAPE, ast_.CONTEXT_PTSHAPE),   # Shape
+                            (ast_.TYPE_NUM, None),                            # Draggable
+                            #(ast_.TYPE_str,)                            # Label
+                            (ast_.TYPE_NUM, None),                            # Outline
+                            (ast_.TYPE_NUM, None),                             # Anchor
+                    ]
 
                     latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
-                    print(next_node.dollar_list)
+                    print("dollar_list:", next_node.dollar_list)
 
-                    for i in range(min(len(next_node.dollar_list), 3)): # TODO: Take 3 down to the whole 8 argument
+                    for i in range(min(len(next_node.dollar_list), 4)): # TODO: Take 3 down to the whole 8 argument
                         if next_node.dollar_list[i].token.id != lx.TOKEN_PLACEHOLDER_ID:
-                            if ast.getExprTypeFromGlobalContext(next_node.dollar_list[i]) != expected_types[i]:
-                                raise Exception(f"Expected type {expected_types[i]} for {i}-th argument (here {next_node.dollar_list[i]}) for point dollar expression, got {ast.getExprTypeFromGlobalContext(next_node.dollar_list[i])}")
+                            if ast.getExprTypeFromExtendedContext(next_node.dollar_list[i], expected_types_with_context[i][1]) != expected_types_with_context[i][0]:
+                                raise Exception(f"Expected type {expected_types_with_context[i][0]} for {i}-th argument (here {next_node.dollar_list[i]}) for point dollar expression, got {ast.getExprTypeFromGlobalContext(next_node.dollar_list[i])}")
                             match i:
                                 case 0: # Color
                                     config_strs[i] = f', "colorLatex": "{next_node.dollar_list[i].latex()}"'
@@ -201,6 +202,8 @@ def make_graph(ast: ast_.AST) -> str:
                                 case 2: # Thickness
                                     latex = next_node.dollar_list[i].latex()
                                     config_strs[i] = f', "pointSize": "{latex}", "movablePointSize": "{latex}"'
+                                case 3: # Shape
+                                    config_strs[i] = lx.ptshape_token_to_latex[next_node.dollar_list[i].token] # It is embedded inside of the data of the token itself
                             latex_expressions += config_strs[i]
 
                     # And we finish off
@@ -221,57 +224,3 @@ def make_graph(ast: ast_.AST) -> str:
         latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}"}}{","if i != len(ast.ast)-1 else ""}\n"""
     return to_return.replace("GRAPHDATA", calc_state.replace("EXPRESSIONS", latex_expressions))
 
-# def make_graph(ast: ast_.AST) -> str:
-#     to_return = html_template
-#     calc_state = calc_template
-#     latex_expressions = ""
-#     for i, node in enumerate(ast.ast):
-#         if expr.token.id == lx.TOKEN_DOLLAR_ID: # This is a dollar expression, it's already been handled
-#             continue
-#
-#         if i < len(expr_list)-1: # There's still an element left
-#             next_expr = expr_list[i+1]
-#             if next_expr.token.id == lx.TOKEN_DOLLAR_ID: # Next is a dollar expression
-#
-#                 # What if current expression is a slider
-#                 if expr.token.id == lx.TOKEN_EQUAL_ID:
-#                     if expr.left.token.id == lx.TOKEN_VARIABLE_ID: # These ifs tell us current expression is an assignment of a constant
-#                         if expr.right.token.id == lx.TOKEN_NUM_ID: # Then we are certain it's a slider
-#                             # The argument structure is ($ <of> ((start <,> stop)<,> step))
-#                             # And if it's defaults, we just let it be as is, without modifying the parameter
-#                             slider_min_expr = next_expr.right.left # This will exist if syntax is ok
-#                             slider_max_expr = next_expr.right.right.left 
-#                             slider_step_expr = next_expr.right.right.right
-#                             latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{expr.latex()}" """
-#                             min_str = ""
-#                             max_str = ""
-#                             step_str = ""
-#                             if slider_min_expr.token.id != lx.TOKEN_PLACEHOLDER_ID:
-#                                 min_str = f""" "min": "{slider_min_expr.latex()}", "hardMin": true """
-#                             if slider_max_expr.token.id != lx.TOKEN_PLACEHOLDER_ID:
-#                                 max_str = f""" "max": "{slider_max_expr.latex()}", "hardMax": true """
-#                             if slider_step_expr.token.id != lx.TOKEN_PLACEHOLDER_ID:
-#                                 step_str = f""" "step": "{slider_step_expr.latex()}" """
-#
-#                             if min_str == "" and max_str == "" and step_str == "": # We have no changes from the default, add a parenthesis (and maybe a comma) and we're done
-#                                 latex_expressions += f"}}{",\n"if i != len(expr_list)-1 else ""}"
-#                                 continue
-#                             latex_expressions += """, "slider": {"""
-#                             if min_str != "":
-#                                 latex_expressions += min_str
-#                             if max_str != "":
-#                                 if min_str != "":
-#                                     latex_expressions += ","
-#                                 latex_expressions += max_str
-#                             if step_str != "":
-#                                 if min_str != "" or max_str != "":
-#                                     latex_expressions += ","
-#                                 latex_expressions += step_str
-#                             print(step_str, slider_step_expr)
-#                             latex_expressions += f"}}}}{",\n"if i != len(expr_list)-1 else ""}"
-#                             # latex_expressions
-#                             # ""","slider":{{"min": {slider_min_expr.latex()}, "max": {slider_max_expr.latex()}, "step": {slider_step_expr.latex()}, "hardMin": true, "hardMax":true}}}}{","if i != len(expr_list)-1 else ""}\n"""
-#                             continue
-#
-#         latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{expr.latex()}"}}{","if i != len(expr_list)-1 else ""}\n"""
-#     return to_return.replace("GRAPHDATA", calc_state.replace("EXPRESSIONS", latex_expressions))

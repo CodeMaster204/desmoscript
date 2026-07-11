@@ -34,6 +34,8 @@ Then, we know we need to write definitions down in latex, so we do that for both
 then writing functioncalls becomes easy
 """
 
+from typing import final
+
 import parser as prs
 import lexer as lx
 TYPE_NONE = 0
@@ -42,6 +44,7 @@ TYPE_POINT = 2 # same for points
 TYPE_POINT3D = 3 # same for points(3D)
 TYPE_POLYGON = 4 # and same for polygons
 TYPE_COLOR = 5 # For stuff like rgb(100,100,100)
+TYPE_PTSHAPE = 6 # Point shape
 
 def type_add(tp1: int, tp2: int):
     """returns the result of adding two types
@@ -229,7 +232,6 @@ class ASTNode:
         elif expr.token.id == lx.TOKEN_DOLLAR_ID:
             self.nodetype = ASTNode.DollarExpr
             self.dollar_list = get_list_of_params_from_lparen(expr)
-            print("aseas", self.dollar_list)
 
         else:
             self.nodetype = ASTNode.Instance
@@ -293,7 +295,9 @@ def getExprType(expr: prs.Expr, context: dict[lx.Token, ASTNode] = {})->int:
         case lx.TOKEN_PLUS_ID: # All main standard binary operators
             return type_add(getExprType(expr.left, context), getExprType(expr.right, context))
         case lx.TOKEN_MINUS_ID: # All main standard binary operators
-            return type_sub(getExprType(expr.left, context), getExprType(expr.right, context))
+            if expr.is_bin_op:
+                return type_sub(getExprType(expr.left, context), getExprType(expr.right, context))
+            return getExprType(expr.right, context)
         case lx.TOKEN_MULT_ID: # All main standard binary operators
             return type_mult(getExprType(expr.left, context), getExprType(expr.right, context))
         case lx.TOKEN_DIV_ID: # All main standard binary operators
@@ -337,19 +341,21 @@ def getExprType(expr: prs.Expr, context: dict[lx.Token, ASTNode] = {})->int:
             types = [getExprType(param, context) for param in params]
             
             match expr.left.token.id: # We check which function it is:
-                case lx.TOKEN_COS_ID: # Takes *one* num, and returns a num
-                    if types[0] != TYPE_NUM:
-                        raise Exception("Cos only takes one argument, and it has to be a number")
-                    return TYPE_NUM
-                case lx.TOKEN_POLYGON_ID:
-                    # TODO check stuff
-                    return TYPE_POLYGON
-                case lx.TOKEN_RGB_ID:
-                    if len(params) != 3:
-                        raise Exception(f"Expected 3 arguments for the rbg function, got {len(params)}: {params}")
-                    if types[0] != TYPE_NUM or types[1] != TYPE_NUM or types[2] != TYPE_NUM:
-                        raise Exception("Expected numbers for arguments in rgb function")
-                    return TYPE_COLOR
+                case lx.TOKEN_DSM_FUNC_ID:
+                    match expr.left.token.data:
+                        case lx.KW_COS_ID: # Takes *one* num, and returns a num
+                            if types[0] != TYPE_NUM:
+                                raise Exception("Cos only takes one argument, and it has to be a number")
+                            return TYPE_NUM
+                        case lx.KW_POLYGON_ID:
+                            # TODO check stuff
+                            return TYPE_POLYGON
+                        case lx.KW_RGB_ID:
+                            if len(params) != 3:
+                                raise Exception(f"Expected 3 arguments for the rbg function, got {len(params)}: {params}")
+                            if types[0] != TYPE_NUM or types[1] != TYPE_NUM or types[2] != TYPE_NUM:
+                                raise Exception("Expected numbers for arguments in rgb function")
+                            return TYPE_COLOR
 
                 case _: # An arbitrary function call from a nice function (doesn't do type magic), typically custom-defined
                     if not expr.left.token in context: # Unresolved dependency
@@ -365,6 +371,9 @@ def getExprType(expr: prs.Expr, context: dict[lx.Token, ASTNode] = {})->int:
 
     return TYPE_NONE
 
+CONTEXT_PTSHAPE = {}
+for token in lx.default_ptshape_tokens:
+    CONTEXT_PTSHAPE[token] = ASTNode(prs.Expr(token), {}, TYPE_PTSHAPE)
 
 class AST():
     def __init__(self, exprs: list[prs.Expr]):
@@ -373,14 +382,24 @@ class AST():
         Args:
             exprs: a list of expressions
         """
-        self.context: dict[lx.Token, ASTNode] = {
-                lx.TOKEN_X_VAR: ASTNode(prs.Expr(lx.TOKEN_X_VAR), {}, TYPE_NUM),
-                lx.TOKEN_Y_VAR: ASTNode(prs.Expr(lx.TOKEN_Y_VAR), {}, TYPE_NUM),
-                }
+        self.context: dict[lx.Token, ASTNode] = {}
+        for var_token in lx.default_variable_tokens:
+            self.context[var_token] = ASTNode(prs.Expr(var_token), {}, TYPE_NUM)
+        for color_token in lx.default_color_tokens:
+            self.context[color_token] = ASTNode(prs.Expr(color_token), {}, TYPE_COLOR)
         # We start out by adding defaults like x,y, (maybe t, r and theta?), if they exist
         self.ast: list[ASTNode] = [ASTNode(expr, self.context) for expr in exprs]
         # The context oughta be done now
 
     def getExprTypeFromGlobalContext(self, expr: prs.Expr):
         return getExprType(expr, self.context)
+
+    def getExprTypeFromExtendedContext(self, expr: prs.Expr, extension_context: dict[lx.Token, ASTNode] | None):
+        if extension_context is None:
+            return self.getExprTypeFromGlobalContext(expr)
+        extended_context = self.context.copy()
+        for extra in extension_context:
+            extended_context[extra] = extension_context[extra]
+        return getExprType(expr, extended_context)
+
 

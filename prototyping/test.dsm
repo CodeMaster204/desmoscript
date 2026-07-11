@@ -3,9 +3,11 @@
 #    yrange;:10,100
 #} -
 raw{
+    t= 2,2 $(green);
     col1 = rgb(0,0,0);
-    p0 = 0,0 $(col1, 0.5, 10); # Color, opacity, thickness, shape, draggable, label, anchor for label, outline
+    p0 = -1,0 $(col1, 0.5, 10, star); # Color, opacity, thickness, shape, draggable, label, anchor for label, outline
     p1 = 0,1 $(rgb(101,10,1),, 20);
+star = 2;
     p2 = 1,0;
     polygon(p0,p1,p2);
     p3 = 0,0,0;
@@ -31,6 +33,3 @@ raw{
 #all in all:
 #color, opacity, thickness, shape(specific), draggable, label:text, outline, anchor for label, fill_opacity, min, max, step
 
-
-# sliders: done
-# points: doing, drag is only in case of assignment, or via slider
