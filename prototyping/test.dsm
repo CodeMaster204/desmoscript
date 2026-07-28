@@ -13,7 +13,7 @@ raw{
     p1 = 0,1 $(rgb(101,10,1),, 20);
 star = 2;
     p2 = 1,0; $(orange);
-    polygon(p0,p1,p2) $(orange, 0.5, 0.1, 2, dots);
+    polygon(p0,p1,p2); $(orange, 0.5, 0.1, 2, dots);
     p3 = 0,0,0;
     waitasecond =2;
     a $(1, 4,) = 2;
