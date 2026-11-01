@@ -188,12 +188,15 @@ TOKEN_PTSHAPE_STAR = Token(TOKEN_VARIABLE_ID, data = "s_{tar}")
 TOKEN_PTDRAG_NO = Token(TOKEN_VARIABLE_ID, data = "n_{o}")
 TOKEN_PTDRAG_XY = Token(TOKEN_VARIABLE_ID, data = "x_{y}")
 # The horizontal and vertical ones are handled with the normal x and y tokens
+# The point outline is handled by y(es) and no
 
 
-TOKEN_LINESTYLE_LINE = Token(TOKEN_VARIABLE_ID, data = "l_{ine}")
+TOKEN_LINESTYLE_LINES = Token(TOKEN_VARIABLE_ID, data = "l_{ines}")
 TOKEN_LINESTYLE_DASHES = Token(TOKEN_VARIABLE_ID, data = "d_{ashes}")
 TOKEN_LINESTYLE_DOTS = Token(TOKEN_VARIABLE_ID, data = "d_{ots}")
 
+TOKEN_POLYGON_VISIBLE_FILL = Token(TOKEN_VARIABLE_ID, data = "f_{ill}") # Used with lines to determine whether only one component of fill/line is shown in polygons
+TOKEN_POLYGON_VISIBLE_ALL = Token(TOKEN_VARIABLE_ID, data = "a_{ll}")
 # Desmos variables defined by default:
 TOKEN_X_VAR = Token(TOKEN_VARIABLE_ID, "x")
 TOKEN_Y_VAR = Token(TOKEN_VARIABLE_ID, "y")
@@ -221,9 +224,12 @@ variables = {
 
         "no": TOKEN_PTDRAG_NO,
         "xy": TOKEN_PTDRAG_XY,
-        "line": TOKEN_LINESTYLE_LINE,
+        "lines": TOKEN_LINESTYLE_LINES,
         "dots": TOKEN_LINESTYLE_DOTS,
         "dashes": TOKEN_LINESTYLE_DASHES,
+
+        "fill": TOKEN_POLYGON_VISIBLE_FILL,
+        "all": TOKEN_POLYGON_VISIBLE_ALL,
         }
 keywords = {
         "raw": TOKEN_RAW,
@@ -277,15 +283,29 @@ ptdrag_token_to_latex = {
         TOKEN_X_VAR: ',"dragMode":"X"',
         TOKEN_Y_VAR: ',"dragMode":"Y"',
         }
+ptoutline_token_to_latex = { # These use the same ones as ptdrag
+        TOKEN_PTDRAG_NO: '',
+        TOKEN_Y_VAR: ',"pointOutline":true', 
+        }
 default_linestyle_tokens = [
-        TOKEN_LINESTYLE_LINE,
+        TOKEN_LINESTYLE_LINES,
         TOKEN_LINESTYLE_DASHES,
         TOKEN_LINESTYLE_DOTS,
         ]
 linestyle_token_to_latex = {
-        TOKEN_LINESTYLE_LINE: ',"lines":true',
+        TOKEN_LINESTYLE_LINES: '',
         TOKEN_LINESTYLE_DASHES: ',"lineStyle": "DASHED"',
         TOKEN_LINESTYLE_DOTS: ',"lineStyle": "DOTTED"',
+        }
+polygon_visible_tokens = [
+        TOKEN_POLYGON_VISIBLE_ALL,
+        TOKEN_POLYGON_VISIBLE_FILL,
+        TOKEN_LINESTYLE_LINES,
+        ]
+polygon_visible_token_to_latex = {
+        TOKEN_POLYGON_VISIBLE_ALL: '',
+        TOKEN_POLYGON_VISIBLE_FILL: ', "lines": false, "fill": true',
+        TOKEN_LINESTYLE_LINES: ', "lines": true, "fill": false',
         }
 
 

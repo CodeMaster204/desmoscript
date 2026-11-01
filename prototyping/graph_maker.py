@@ -185,15 +185,15 @@ def make_graph(ast: ast_.AST) -> str:
                             (ast_.TYPE_NUM, None),                       # Thickness
                             (ast_.TYPE_PTSHAPE, ast_.CONTEXT_PTSHAPE),   # Shape
                             (ast_.TYPE_PTDRAG, ast_.CONTEXT_PTDRAG),    # Draggable
+                            (ast_.TYPE_PTDRAG, ast_.CONTEXT_PTDRAG),       # Outline (uses y and no)
                             #(ast_.TYPE_str,)                            # Label
-                            (ast_.TYPE_NUM, None),                            # Outline
                             (ast_.TYPE_NUM, None),                             # Anchor
                     ]
 
                     latex_expressions += f"""{{"type": "expression", "id":"{i}", "hidden":{"true" if next_node.dollar_hidden else "false"},"latex": "{node.expr.latex()}" """
                     print("dollar_list:", next_node.dollar_list)
 
-                    for i in range(min(len(next_node.dollar_list), 5)): # TODO: Take 5 up to the whole 8 argument
+                    for i in range(min(len(next_node.dollar_list), 6)): # TODO: Take 5 up to the whole 8 argument
                         if next_node.dollar_list[i].token.id != lx.TOKEN_PLACEHOLDER_ID:
                             if ast.getExprTypeFromExtendedContext(next_node.dollar_list[i], expected_types_with_context[i][1]) != expected_types_with_context[i][0]:
                                 raise Exception(f"Expected type {expected_types_with_context[i][0]} for {i}-th argument (here {next_node.dollar_list[i]}) for point dollar expression, got {ast.getExprTypeFromGlobalContext(next_node.dollar_list[i])}")
@@ -209,6 +209,8 @@ def make_graph(ast: ast_.AST) -> str:
                                     config_strs[i] = lx.ptshape_token_to_latex[next_node.dollar_list[i].token] # It is embedded inside of the data of the token itself
                                 case 4: # Draggable
                                     config_strs[i] = lx.ptdrag_token_to_latex[next_node.dollar_list[i].token]
+                                case 5: # Outline
+                                    config_strs[i] = lx.ptoutline_token_to_latex[next_node.dollar_list[i].token]
                             latex_expressions += config_strs[i]
 
                     # And we finish off
@@ -259,7 +261,7 @@ def make_graph(ast: ast_.AST) -> str:
                 # color opacity thickness linestyle fill_opacity
                 if (node.nodetype == ast_.ASTNode.Instance and node.getType() == ast_.TYPE_POLYGON):
 
-                    config_strs = ["" for i in range(5)] # TODO: Check the range is good
+                    config_strs = ["" for i in range(6)] # TODO: Check the range is good
 
                     expected_types_with_context = [
                             (ast_.TYPE_COLOR, None),                    # Color
@@ -267,12 +269,13 @@ def make_graph(ast: ast_.AST) -> str:
                             (ast_.TYPE_NUM, None),                       # opacity
                             (ast_.TYPE_NUM, None),                       # Thickness
                             (ast_.TYPE_LINESTYLE, ast_.CONTEXT_LINESTYLE),   # Style
+                            (ast_.TYPE_POLYGON_VISIBLE, ast_.CONTEXT_POLYGON_VISIBLE),   # Whether lines/fill is visible
                     ]
 
                     latex_expressions += f"""{{"type": "expression", "id":"{i}", "hidden":{"true" if next_node.dollar_hidden else "false"},"latex": "{node.expr.latex()}" """
                     print("dollar_list:", next_node.dollar_list)
 
-                    for i in range(min(len(next_node.dollar_list), 5)): 
+                    for i in range(min(len(next_node.dollar_list), 6)): 
                         if next_node.dollar_list[i].token.id != lx.TOKEN_PLACEHOLDER_ID:
                             if ast.getExprTypeFromExtendedContext(next_node.dollar_list[i], expected_types_with_context[i][1]) != expected_types_with_context[i][0]:
                                 raise Exception(f"Expected type {expected_types_with_context[i][0]} for {i}-th argument (here {next_node.dollar_list[i]}) for point dollar expression, got {ast.getExprTypeFromGlobalContext(next_node.dollar_list[i])}")
@@ -287,6 +290,8 @@ def make_graph(ast: ast_.AST) -> str:
                                     config_strs[i] = f', "lineWidth": "{next_node.dollar_list[i].latex()}"'
                                 case 4: # Shape
                                     config_strs[i] = lx.linestyle_token_to_latex[next_node.dollar_list[i].token] # It is embedded inside of this dict 
+                                case 5: # Lines/fill visibility
+                                    config_strs[i] = lx.polygon_visible_token_to_latex[next_node.dollar_list[i].token] # It is embedded inside of this dict 
                             latex_expressions += config_strs[i]
 
                     # And we finish off

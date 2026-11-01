@@ -47,6 +47,7 @@ TYPE_COLOR = 5 # For stuff like rgb(100,100,100)
 TYPE_PTSHAPE = 6 # Point shape
 TYPE_PTDRAG = 7 # Draggable qualifier (xy, no, x, and y, in the appropriate context)
 TYPE_LINESTYLE = 8 # Stuff like dashed, dotted etc.
+TYPE_POLYGON_VISIBLE = 9 # Whether the lines/fill is visible
 
 def type_add(tp1: int, tp2: int):
     """returns the result of adding two types
@@ -394,6 +395,10 @@ for token in lx.default_ptdrag_tokens:
 CONTEXT_LINESTYLE = {}
 for token in lx.default_linestyle_tokens:
     CONTEXT_LINESTYLE[token] = ASTNode(prs.Expr(token), {}, TYPE_LINESTYLE)
+
+CONTEXT_POLYGON_VISIBLE = {}
+for token in lx.polygon_visible_tokens:
+    CONTEXT_POLYGON_VISIBLE[token] = ASTNode(prs.Expr(token), {}, TYPE_POLYGON_VISIBLE)
 
 class AST():
     def __init__(self, exprs: list[prs.Expr]):
