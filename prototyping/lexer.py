@@ -2,6 +2,7 @@
 
 This file implements the lexer part of desmoscript's prototype
 """
+from jinja2.lexer import TOKEN_COMMENT_END
 
 from typing import List
 
@@ -359,6 +360,7 @@ def tokenize_str(content) -> TokenList:
     depth = 0 # The current depth (parentheses for now, later {} and [] will be added)
     dollar_depth = 0 # The depth at which we saw the dollar sign
     dollar_mode = 0 # This is set to 0 when seeing a $, set to 2 when seeing a (, set to 3 when meeting the matching ), and reset to 0 after the following end of line/file token
+    dollar_hidden = 0 # This is 1 one when we meet 2 consecutive dollars, to get 2 dollars in the output as well. $$ hides the equation, whence the name
     dollar_buffer = TokenList() # The buffer inside which resides dollar info
     appending_buffer = result # The buffer we are apppending now
     content = content + '\n' # We add a newline character to get an end token no matter what
@@ -380,6 +382,9 @@ def tokenize_str(content) -> TokenList:
                         dollar_mode = 2
                         appending_buffer = dollar_buffer
                         appending_buffer.append(TOKEN_DOLLAR) # We want the buffer to look like $arg1,arg2,arg4; (in tokens) afterwards
+                        if dollar_hidden == 1:
+                            appending_buffer.append(TOKEN_DOLLAR)
+                            dollar_hidden = 0
                     else:
                         appending_buffer.append(TOKEN_LPAREN)
                     start_index = current_index + 1
@@ -442,6 +447,10 @@ def tokenize_str(content) -> TokenList:
                 case "$":
                     # We don't append a token, as it'll be appended later
                     start_index = current_index + 1
+                    if dollar_mode ==1:
+                        dollar_hidden = 1
+                    else:
+                        dollar_hidden = 0
                     dollar_mode = 1
                     dollar_depth = depth
                     continue
@@ -460,12 +469,20 @@ def tokenize_str(content) -> TokenList:
                 result.list += dollar_buffer.list
                 result.count += dollar_buffer.count
                 dollar_buffer = TokenList() # We reset the dollar buffer
+            elif dollar_hidden and dollar_mode:
+                result.list+=[TOKEN_DOLLAR, TOKEN_DOLLAR, TOKEN_END]
+                result.count+=3
+                dollar_mode = 0
             start_index = current_index +1
 
     if dollar_mode == 3: # We had some dollar information in this section, which got terminated by an eof, and not a ;
         result.list += dollar_buffer.list
         result.count += dollar_buffer.count
         dollar_buffer = TokenList() # We reset the dollar buffer
+    elif dollar_hidden and dollar_mode:
+        result.list+=[TOKEN_DOLLAR, TOKEN_DOLLAR, TOKEN_END]
+        result.count+=3
+        dollar_mode = 0
 
     result.append(TOKEN_EOF)
     return result

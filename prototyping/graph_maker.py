@@ -1,7 +1,9 @@
 import parser as prs
 import lexer as lx
 import ast_ as ast_
-api_key = "3811e14e71e14f2b83d5fea5e2e13075"
+api_key = ""
+with open("api_key.txt", "r") as f_in:
+    api_key = f_in.read()
 graph_template = f"""
 <!DOCTYPE html>
 <html>
@@ -147,7 +149,7 @@ def make_graph(ast: ast_.AST) -> str:
                         if slider_step_expr.token.id != lx.TOKEN_PLACEHOLDER_ID:
                             step_str = f""" "step": "{slider_step_expr.latex()}" """
 
-                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "hidden":{"true" if next_node.dollar_hidden else "false"}, "latex": "{node.expr.latex()}" """
 
 
                     if min_str == "" and max_str == "" and step_str == "": # We have no changes from the default, add a parenthesis (and maybe a comma) and we're done
@@ -188,7 +190,7 @@ def make_graph(ast: ast_.AST) -> str:
                             (ast_.TYPE_NUM, None),                             # Anchor
                     ]
 
-                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "hidden":{"true" if next_node.dollar_hidden else "false"},"latex": "{node.expr.latex()}" """
                     print("dollar_list:", next_node.dollar_list)
 
                     for i in range(min(len(next_node.dollar_list), 5)): # TODO: Take 5 up to the whole 8 argument
@@ -230,7 +232,7 @@ def make_graph(ast: ast_.AST) -> str:
                             (ast_.TYPE_LINESTYLE, ast_.CONTEXT_LINESTYLE),   # Style
                     ]
 
-                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "hidden":{"true" if next_node.dollar_hidden else "false"},"latex": "{node.expr.latex()}" """
                     print("dollar_list:", next_node.dollar_list)
 
                     for i in range(min(len(next_node.dollar_list), 4)): 
@@ -267,7 +269,7 @@ def make_graph(ast: ast_.AST) -> str:
                             (ast_.TYPE_LINESTYLE, ast_.CONTEXT_LINESTYLE),   # Style
                     ]
 
-                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "hidden":{"true" if next_node.dollar_hidden else "false"},"latex": "{node.expr.latex()}" """
                     print("dollar_list:", next_node.dollar_list)
 
                     for i in range(min(len(next_node.dollar_list), 5)): 
@@ -300,7 +302,7 @@ def make_graph(ast: ast_.AST) -> str:
 
                     
 
-                    latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}" """
+                    latex_expressions += f"""{{"type": "expression", "id":"{i}","hidden":{"true" if next_node.dollar_hidden else "false"}, "latex": "{node.expr.latex()}" """
 
         latex_expressions += f"""{{"type": "expression", "id":"{i}", "latex": "{node.expr.latex()}"}}{","if i != len(ast.ast)-1 else ""}\n"""
     return to_return.replace("GRAPHDATA", calc_state.replace("EXPRESSIONS", latex_expressions))

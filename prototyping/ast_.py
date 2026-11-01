@@ -202,6 +202,7 @@ class ASTNode:
         self.instancetype: int = instancetype # Can be updated once every context has been fully determined (desmos is functional, so stuff can happen later in code), OR at start, if it's an expression whose type is known
 
         self.dollar_list: list[prs.Expr] = [] # A list of dollar expressions parameters, if applicable
+        self.dollar_hidden: int = 0 # Whether the dollar expression is a hiding expression (with a double dollar sign)
 
         # For assigments, the highest node *will* be an equal token:
         if expr.token.id == lx.TOKEN_EQUAL_ID:
@@ -233,7 +234,14 @@ class ASTNode:
 
         elif expr.token.id == lx.TOKEN_DOLLAR_ID:
             self.nodetype = ASTNode.DollarExpr
-            self.dollar_list = get_list_of_params_from_lparen(expr)
+            if expr.right.token.id == lx.TOKEN_DOLLAR_ID: # We have a hidden expression : a $$ pattern
+                self.dollar_hidden = 1
+                if expr.right.op_type == prs.EXPR_ATOM: # No modification, just hidden
+                    self.dollar_list = []
+                else:
+                    self.dollar_list = get_list_of_params_from_lparen(expr.right)
+            else:
+                self.dollar_list = get_list_of_params_from_lparen(expr)
 
         else:
             self.nodetype = ASTNode.Instance

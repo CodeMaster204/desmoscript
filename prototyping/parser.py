@@ -201,7 +201,10 @@ def nud_lcur(token, token_list: lx.TokenList):
 
 def nud_dollar(token, token_list):
     to_return = Expr(token, EXPR_PRE)
-    to_return.right = parse_line(token_list, rbp_table[token.id])
+    if(token_list.peek().id == lx.TOKEN_END_ID):
+        to_return.op_type = EXPR_ATOM
+    else:
+        to_return.right = parse_line(token_list, rbp_table[token.id])
     return to_return
 
 nud_lbra = nud_lparen # Same mechanics as for the left parenthesis
